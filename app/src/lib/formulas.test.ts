@@ -1,0 +1,69 @@
+import { describe, expect, it } from "vitest";
+import { isOverdue, legalAmount, missedPeriods, outstandingFor, split } from "./formulas";
+
+// Golden numbers from the spec ("Golden test numbers").
+describe("golden numbers", () => {
+  it("legal amount", () => {
+    expect(legalAmount(8_600_000_000n, 12)).toBe(9_288_000_000n);
+  });
+  it("loan fee", () => {
+    expect(outstandingFor(9_288_000_000n, "Loan", 300)).toBe(9_566_640_000n);
+  });
+  it("normal remit", () => {
+    expect(split(4_000_000_000n, 1500, 9_566_640_000n)).toEqual({
+      toLender: 600_000_000n,
+      toFamily: 3_400_000_000n,
+      outstanding: 8_966_640_000n,
+    });
+  });
+  it("final remit", () => {
+    expect(split(4_000_000_000n, 1500, 100_000_000n)).toEqual({
+      toLender: 100_000_000n,
+      toFamily: 3_900_000_000n,
+      outstanding: 0n,
+    });
+  });
+  it("grant", () => {
+    expect(outstandingFor(9_288_000_000n, "Grant", 0)).toBe(0n);
+    expect(split(4_000_000_000n, 1500, 0n)).toEqual({
+      toLender: 0n,
+      toFamily: 4_000_000_000n,
+      outstanding: 0n,
+    });
+  });
+  it("dust remit", () => {
+    expect(split(50_000_000n, 1500, 9_566_640_000n).toLender).toBe(7_500_000n);
+  });
+});
+
+describe("truncating division", () => {
+  it("legal amount truncates", () => {
+    // 1 unit * 800 * 1 / 120000 = 0
+    expect(legalAmount(1n, 1)).toBe(1n);
+    expect(legalAmount(150_000n, 7)).toBe(150_000n + (150_000n * 800n * 7n) / 120000n);
+  });
+  it("fee truncates", () => {
+    expect(outstandingFor(10_001n, "Loan", 1)).toBe(10_001n + 1n);
+  });
+  it("share truncates", () => {
+    expect(split(19n, 1500, 1_000n).toLender).toBe(2n); // 19*1500/10000 = 2.85 -> 2
+  });
+});
+
+describe("missedPeriods / isOverdue", () => {
+  const base = { status: "Active" as const, lastPaymentAt: 1000, periodSecs: 60 };
+  it("counts whole periods", () => {
+    expect(missedPeriods({ ...base, now: 1000 })).toBe(0);
+    expect(missedPeriods({ ...base, now: 1059 })).toBe(0);
+    expect(missedPeriods({ ...base, now: 1060 })).toBe(1);
+    expect(missedPeriods({ ...base, now: 1000 + 60 * 4 })).toBe(4);
+  });
+  it("is 0 when repaid", () => {
+    expect(missedPeriods({ ...base, status: "Repaid", now: 99_999 })).toBe(0);
+  });
+  it("overdue only when strictly more than max", () => {
+    expect(isOverdue(3, 3)).toBe(false);
+    expect(isOverdue(4, 3)).toBe(true);
+    expect(isOverdue(0, 3)).toBe(false);
+  });
+});
