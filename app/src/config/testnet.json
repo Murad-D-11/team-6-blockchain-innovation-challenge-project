@@ -1,0 +1,24 @@
+{
+  "network": "testnet",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "horizonUrl": "https://horizon-testnet.stellar.org",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "contractId": "CCOTYR3TCNXTWV67KPYWZSQDWOIFP6UFSVC37WXOKUWECNQ6RJVJ7TN2",
+  "tokenContractId": "CAMOSUTVYN5O5FS2A5KK44Q3RUG7JIW22SJ36VX7VZP2OKHZS3QNTGW4",
+  "asset": {
+    "code": "USDC",
+    "issuer": "GC7TNM7TEU4MJNBN462VFGAQZAT6OHUJALTPGOYB5AQZMS73Q436J4JB"
+  },
+  "periodSecs": 60,
+  "maxPausePeriods": 3,
+  "accounts": {
+    "admin": "GDLAI6HAF3IQESZU5NHTX67PQODLCCLSUAHZ6UHXL6JEYQHCJAXZYQZM",
+    "issuer": "GBSMTEMSAZV6L3EWAEH7GWCJQVY63OYNEBAT7CFO6VN6B5XQF2GWS43K",
+    "worker": "GAJERAAWQYNSGHE5WOYO5OD2CVS42NCRUNLDQE5QHTRXS4TLPEXUF4JO",
+    "family": "GDOXTNB6JEAWMDDWJPEA4O2NMQ2H4LRPPAG5BV2ZCWRSCCH5NYAX53CP",
+    "funder": "GCQL7YNENDLECUK34JCG3AEPQOJJ4R24FPMTKK62FXJ32Q5BIV2A4BX3",
+    "creditor": "GCSCBML4WGLEFRXJJE2DQXUZSITF6XCHYJ467BFON4IZGFKKT53BIIAS"
+  },
+  "explorerTxUrl": "https://stellar.expert/explorer/testnet/tx/",
+  "deployedAt": "placeholder"
+}
