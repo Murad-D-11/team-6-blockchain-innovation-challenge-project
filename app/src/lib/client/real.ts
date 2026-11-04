@@ -10,15 +10,23 @@ import {
   type RemitResult,
   type TxResult,
 } from "../types";
+import { getUsdcBalance, hasUsdcTrustline } from "./horizon";
+import { notifyAddressChanged } from "./wallet-events";
+import { connectFreighter } from "./wallet";
 
 const notReady = (): never => {
   throw new LayaError(0, "Real client not ready yet");
 };
 
-/** STUB until Nov 5-6. Every method throws LayaError(0, "Real client not ready yet"). */
+/** Wallet and Horizon reads are live; every other method is a STUB until Nov 5-6 and throws LayaError(0, "Real client not ready yet"). */
 export class RealLayaClient implements LayaClient {
-  async connect(): Promise<string> { return notReady(); }
-  address(): string | null { return null; }
+  private addr: string | null = null;
+  async connect(): Promise<string> {
+    this.addr = await connectFreighter();
+    notifyAddressChanged();
+    return this.addr;
+  }
+  address(): string | null { return this.addr; }
   async requestPayoff(_p: { family: string; creditor: string; principal: bigint; months: number; shareBps: number; docHash: string }): Promise<TxResult & { requestId: number }> { return notReady(); }
   async cancelRequest(_requestId: number): Promise<TxResult> { return notReady(); }
   async confirmRequest(_requestId: number): Promise<TxResult> { return notReady(); }
@@ -33,7 +41,7 @@ export class RealLayaClient implements LayaClient {
   async listLoans(): Promise<Loan[]> { return notReady(); }
   async getLoan(_id: number): Promise<Loan> { return notReady(); }
   async isCreditor(_address: string): Promise<boolean> { return notReady(); }
-  async hasTrustline(_address: string): Promise<boolean> { return notReady(); }
-  async getBalance(_address: string): Promise<bigint> { return notReady(); }
+  async hasTrustline(address: string): Promise<boolean> { return hasUsdcTrustline(address); }
+  async getBalance(address: string): Promise<bigint> { return getUsdcBalance(address); }
   async getEvents(_id?: number): Promise<LayaEvent[]> { return notReady(); }
 }
