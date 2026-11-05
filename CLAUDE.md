@@ -1,10 +1,10 @@
 # Laya — rules for every Claude Code session in this repo
 
-Laya is a 4-person hackathon project (Velocity "Blockchain Innovation Challenge powered by Stellar", Nov 2026) on **Stellar testnet**. It pays off a migrant worker's recruitment debt at its legal value (principal + 8%/yr simple interest), with the old lender's on-chain acceptance. The worker then repays a fair funder with a share of each remittance sent through Laya.
+Laya is a 4-person hackathon project (Velocity "Blockchain Innovation Challenge powered by Stellar", Nov 2026) on **Stellar testnet**. It sorts a migrant worker's pre-departure bills by a published rulebook and pays each provider directly, and the worker owes the principal only: a Loan adds the funder's flat fee (default 3%, at most 8%), and a Grant (paid by the employer) adds nothing. The worker repays a Loan with a share of each remittance sent through Laya.
 
 ## Source of truth
 
-`docs/SPEC.md` (plan v1.1) is the spec. The sections **"Shared contract A"** (Soroban contract) and **"Shared contract B"** (app types, `LayaClient`, config, file ownership) are fixed. Read them before writing code.
+`docs/PLAN-v2.md` is the spec. `docs/SPEC.md` is v1.1 and is superseded wherever they differ. The sections **"Shared contract A"** (Soroban contract) and **"Shared contract B"** (app types, `LayaClient`, config, file ownership) are fixed. Read them before writing code.
 
 ## Rules
 
@@ -42,7 +42,7 @@ All token amounts are `bigint` with 7 decimals (1 USDC = `10_000_000n`). Never u
 
 ## Testing pages on the mock
 
-Add `?role=worker|family|funder|creditor|admin` to any URL to act as that account, with no Freighter needed. The role is remembered for the browser tab. `?mockReset=1` wipes the mock's saved state. `/dev` runs the full golden flow on the mock.
+Add `?role=worker|family|funder|creditor|clinic|employer|admin` to any URL to act as that account, with no Freighter needed. The role is remembered for the browser tab. `?mockReset=1` wipes the mock's saved state. `/dev` runs the full golden flow on the mock.
 
 ## Git
 
