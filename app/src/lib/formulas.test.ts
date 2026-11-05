@@ -1,30 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { isOverdue, legalAmount, missedPeriods, outstandingFor, split } from "./formulas";
 
-// Golden numbers from the spec ("Golden test numbers").
+// v2 golden numbers (docs/PLAN-v2.md, "New golden numbers").
 describe("golden numbers", () => {
-  it("legal amount", () => {
-    expect(legalAmount(8_600_000_000n, 12)).toBe(9_288_000_000n);
+  it("invoice amount: legal amount = principal", () => {
+    expect(legalAmount(1_900_000_000n, 12)).toBe(1_900_000_000n);
   });
   it("loan fee", () => {
-    expect(outstandingFor(9_288_000_000n, "Loan", 300)).toBe(9_566_640_000n);
+    expect(outstandingFor(1_900_000_000n, "Loan", 300)).toBe(1_957_000_000n);
   });
   it("normal remit", () => {
-    expect(split(4_000_000_000n, 1500, 9_566_640_000n)).toEqual({
+    expect(split(4_000_000_000n, 1500, 1_957_000_000n)).toEqual({
       toLender: 600_000_000n,
       toFamily: 3_400_000_000n,
-      outstanding: 8_966_640_000n,
+      outstanding: 1_357_000_000n,
     });
   });
   it("final remit", () => {
-    expect(split(4_000_000_000n, 1500, 100_000_000n)).toEqual({
-      toLender: 100_000_000n,
-      toFamily: 3_900_000_000n,
+    expect(split(4_000_000_000n, 1500, 157_000_000n)).toEqual({
+      toLender: 157_000_000n,
+      toFamily: 3_843_000_000n,
       outstanding: 0n,
     });
   });
   it("grant", () => {
-    expect(outstandingFor(9_288_000_000n, "Grant", 0)).toBe(0n);
+    expect(outstandingFor(650_000_000n, "Grant", 0)).toBe(0n);
     expect(split(4_000_000_000n, 1500, 0n)).toEqual({
       toLender: 0n,
       toFamily: 4_000_000_000n,
@@ -32,15 +32,23 @@ describe("golden numbers", () => {
     });
   });
   it("dust remit", () => {
-    expect(split(50_000_000n, 1500, 9_566_640_000n).toLender).toBe(7_500_000n);
+    expect(split(50_000_000n, 1500, 1_957_000_000n).toLender).toBe(7_500_000n);
+  });
+  it("repayment path for the 190 USDC loan at 15% with 400 USDC remittances", () => {
+    let outstanding = outstandingFor(legalAmount(1_900_000_000n, 12), "Loan", 300);
+    const path: bigint[] = [];
+    for (let i = 0; i < 5; i++) {
+      outstanding = split(4_000_000_000n, 1500, outstanding).outstanding;
+      path.push(outstanding);
+    }
+    expect(path).toEqual([1_357_000_000n, 757_000_000n, 157_000_000n, 0n, 0n]);
   });
 });
 
 describe("truncating division", () => {
-  it("legal amount truncates", () => {
-    // 1 unit * 800 * 1 / 120000 = 0
+  it("legal amount never changes the principal", () => {
     expect(legalAmount(1n, 1)).toBe(1n);
-    expect(legalAmount(150_000n, 7)).toBe(150_000n + (150_000n * 800n * 7n) / 120000n);
+    expect(legalAmount(150_000n, 7)).toBe(150_000n);
   });
   it("fee truncates", () => {
     expect(outstandingFor(10_001n, "Loan", 1)).toBe(10_001n + 1n);

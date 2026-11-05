@@ -17,6 +17,8 @@ export interface TestnetConfig {
     family: string;
     funder: string;
     creditor: string;
+    clinic: string;
+    employer: string;
   };
   explorerTxUrl: string;
   deployedAt: string;

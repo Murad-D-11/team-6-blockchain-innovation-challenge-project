@@ -7,12 +7,12 @@ Pages never import `@stellar/*`. They use `useLaya()` and these helpers.
 | File | What it does |
 | --- | --- |
 | `types.ts` | Shared contract B types, `LayaError`, `LayaClient`. Exact copy of the spec. |
-| `units.ts` | `toUnits("928.80")` → `9_288_000_000n` (throws on empty, negative, letters, >7 decimals). `fromUnits(u, dp = 2)` → plain decimal string, **truncated, not rounded**. `formatUsd(u)` → `"$956.66"`. `formatPhp(u)` → `"₱55,486"`. `PHP_PER_USD = 58` (label it "illustrative rate"). |
-| `formulas.ts` | Bigint copies of the contract rules: `legalAmount(principal, months)`, `outstandingFor(legal, mode, feeBps)`, `split(amount, shareBps, outstanding)` → `{toLender, toFamily, outstanding}`, `missedPeriods({status, now, lastPaymentAt, periodSecs})`, `isOverdue(missed, maxPausePeriods)`. Also the limits (`MAX_FEE_BPS`, `MAX_SHARE_BPS`…). |
+| `units.ts` | `toUnits("190")` → `1_900_000_000n` (throws on empty, negative, letters, >7 decimals). `fromUnits(u, dp = 2)` → plain decimal string, **truncated, not rounded**. `fromUnits(1_957_000_000n)` → `"195.70"` (USDC). `formatUsd(u)` is `fromUnits` with a dollar sign and thousands separators, and `formatPhp(u)` converts at `PHP_PER_USD` (the 195.70 USDC loan is 11,350 pesos), both truncated. `PHP_PER_USD = 58` (label it "illustrative rate"). |
+| `formulas.ts` | Bigint copies of the contract rules: `legalAmount(principal, months)` (v2: returns `principal`), `outstandingFor(legal, mode, feeBps)`, `split(amount, shareBps, outstanding)` → `{toLender, toFamily, outstanding}`, `missedPeriods({status, now, lastPaymentAt, periodSecs})`, `isOverdue(missed, maxPausePeriods)`. Also the limits (`MAX_FEE_BPS`, `MAX_SHARE_BPS`…). |
 | `hash.ts` | `hashFile(file)` and `hashBytes(bytes)`: SHA-256, 64 lowercase hex. The file never leaves the browser. |
 | `address.ts` | `isValidAccount(addr)` (SDK StrKey, no "G" prefix assumption), `shortAddress(addr)` → `"GAJE…F4JO"`. |
 | `config.ts` | `config` = `config/testnet.json`, typed. |
-| `roles.ts` | `roleOf(address)` (match against `config.accounts`), `accountOf(role)`. |
+| `roles.ts` | `roleOf(address)` (match against `config.accounts`; the creditor and clinic addresses both give `"creditor"`), `accountOf(role)` (also accepts the mock-only `"clinic"`). |
 | `client/mock.ts` | `MockLayaClient`: same rules, validation and error codes as the contract. |
 | `client/real.ts` | `RealLayaClient`: **stub**, every method throws `LayaError(0, "Real client not ready yet")` until H5. |
 | `hooks/useLaya.ts` | One shared client: the mock when `NEXT_PUBLIC_USE_MOCK === "true"`, else the real one. |
@@ -39,7 +39,7 @@ export default function Example() {
   async function sendHome() {
     try {
       const r = await laya.remit({ loanId: loans[0].id, amount: toUnits("400") });
-      alert(`${formatUsd(r.toLender)} to the lender, ${formatUsd(r.toFamily)} to family`);
+      alert(`${formatUsd(r.toLender)} to the funder, ${formatUsd(r.toFamily)} to family`);
     } catch (e) {
       setError(e instanceof LayaError ? e.message : "Something went wrong"); // e.code for the number
     }
@@ -52,15 +52,15 @@ Every call takes about 300 ms on the mock, so show a loading state.
 
 ## Mock tricks
 
-- `?role=worker|family|funder|creditor|admin` on any URL acts as that account. It is remembered for the browser tab (sessionStorage). With no role, the mock acts as the worker.
+- `?role=worker|family|funder|creditor|clinic|employer|admin` on any URL acts as that account. It is remembered for the browser tab (sessionStorage). With no role, the mock acts as the worker.
 - `?mockReset=1` wipes the mock's saved state (when the page loads).
-- `/dev` runs the golden flow step by step and has a **Reset mock** button.
-- State lives in `localStorage` under `laya:mock:v1`, so a request made as the worker shows up for the creditor in another tab. Every call re-reads storage, so tabs stay in sync.
+- `/dev` runs the v2 golden flow step by step (190 USDC training Loan at 300 bps, 65 USDC medical Grant) and has a **Reset mock** button.
+- State lives in `localStorage` under `laya:mock:v2`, so a request made as the worker shows up for the creditor in another tab. Every call re-reads storage, so tabs stay in sync.
 - Time is real (`Date.now()`), and a period is 60 s (`config.periodSecs`). Wait 60 s after funding to see **Paused 1 of 3**.
 
 ## Decisions (not spelled out in the spec)
 
-- **Display truncates.** `fromUnits`, `formatUsd` and `formatPhp` truncate. 956.664 shows as `$956.66`, and 9,566,640,000 units × 58 = `₱55,486`. Only these two formatters add symbols and separators.
+- **Display truncates.** `fromUnits`, `formatUsd` and `formatPhp` truncate. 1,957,000,000 units shows as 195.70 USDC, and × 58 gives 11,350 pesos (illustrative). Only `formatUsd` and `formatPhp` add currency symbols and separators.
 - **Error code 0** (wallet / not a contract error) in the mock:
   - `"Switch to the <Role> account to do this"`: the connected account isn't the one the contract would `require_auth` (confirm → Creditor; cancel, remit, set_share → Worker; add_creditor, set_period → Admin).
   - `"Not enough test USDC"`: a transfer would overdraw. Nothing is changed.
@@ -72,7 +72,7 @@ Every call takes about 300 ms on the mock, so show a loading state.
 - `listRequests` / `listLoans` newest first. `getEvents` oldest first, optionally for one id. Events have the five spec types. `ledger` is fake and increasing.
 - Mock `address()` is never `null`, so pages never see "disconnected" on the mock. The real client returns `null` before `connect()`.
 - `useWallet` re-checks the address on a window event, on focus and every 500 ms, so a changed `?role=` shows up without a reload.
-- Trustlines: true for worker, family, funder and creditor; false for everyone else (the admin page can't add a new creditor on the mock, because a new address has no trustline).
+- Trustlines: true for worker, family, funder, creditor, clinic and employer; false for everyone else (the admin page can't add a new creditor on the mock, because a new address has no trustline).
 - `tsconfig` target is ES2020 (bigint literals).
 
 ## Tests

@@ -9,9 +9,12 @@ export const MAX_PRINCIPAL = 1_000_000_000_000_000n;
 /** A payment to the lender of at least 1 USDC resets the pause clock. */
 export const PAUSE_RESET_MIN = 10_000_000n;
 
-/** legal_amount = principal + principal * 800 * months / 120000 */
-export function legalAmount(principal: bigint, months: number): bigint {
-  return principal + (principal * 800n * BigInt(months)) / 120000n;
+/**
+ * v2: legal_amount = principal. v2 charges no interest, so `months` no longer affects the amount;
+ * it stays in the signature because the contract still validates it (1 to 60).
+ */
+export function legalAmount(principal: bigint, _months: number): bigint {
+  return principal;
 }
 
 /** Loan: legal + legal * feeBps / 10000. Grant: 0. */

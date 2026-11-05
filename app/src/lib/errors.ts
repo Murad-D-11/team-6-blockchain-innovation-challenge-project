@@ -3,7 +3,7 @@ export const ERROR_MESSAGES: Readonly<Record<number, string>> = {
   0: "Something went wrong with your wallet or the network. Please try again.",
   1: "The Laya contract is already set up.", // AlreadyInitialized (reserved)
   2: "The Laya contract is not set up yet.", // NotInitialized (reserved)
-  3: "That lender is not on the registered list.", // CreditorNotRegistered
+  3: "This payee is not on the verified provider list.", // CreditorNotRegistered
   4: "We couldn't find that request.", // RequestNotFound
   5: "This request isn't in the right step for that action.", // InvalidRequestStatus
   6: "We couldn't find that loan.", // LoanNotFound
