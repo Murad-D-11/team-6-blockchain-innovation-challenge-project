@@ -24,6 +24,9 @@ describe("config", () => {
   it("has the placeholder shape", () => {
     expect(config.periodSecs).toBe(60);
     expect(config.maxPausePeriods).toBe(3);
-    expect(Object.keys(config.accounts).sort()).toEqual(["admin", "creditor", "family", "funder", "issuer", "worker"]);
+    // Tolerant: passes with the six-account or the eight-account (clinic, employer) testnet.json.
+    for (const key of ["admin", "issuer", "worker", "family", "funder", "creditor"]) {
+      expect(Object.keys(config.accounts)).toContain(key);
+    }
   });
 });

@@ -1,7 +1,7 @@
 export type Mode = "Loan" | "Grant";
 export type RequestStatus = "Open" | "Confirmed" | "Funded" | "Cancelled";
 export type LoanStatus = "Active" | "Repaid";
-export type Role = "worker" | "family" | "funder" | "creditor" | "admin" | "unknown";
+export type Role = "worker" | "family" | "funder" | "creditor" | "admin" | "employer" | "unknown";
 
 export interface Config { admin: string; token: string; periodSecs: number; maxPausePeriods: number }
 

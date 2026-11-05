@@ -72,6 +72,7 @@ const ROLE_LABEL: Record<AccountRole, string> = {
   funder: "Funder",
   creditor: "Creditor",
   admin: "Admin",
+  employer: "Employer",
 };
 
 function initialState(): State {
