@@ -186,6 +186,8 @@ pub(crate) fn extend_instance(env: &Env) {
 pub struct Laya;
 
 pub(crate) const MAX_PRINCIPAL: i128 = 1_000_000_000_000_000;
+/// 1 USDC (7 decimals): the smallest payment to the funder that resets the pause clock.
+pub(crate) const PAUSE_RESET_MIN: i128 = 10_000_000;
 
 pub(crate) fn read_config(env: &Env) -> Config {
     // The constructor always runs at deploy, so Config exists. Errors 1 and 2 are reserved/unused.
@@ -274,6 +276,21 @@ impl Laya {
         Ok(())
     }
 
+    /// Changes the period used by `missed_periods` for all loans. `period_secs == 0` is Error 11.
+    /// `max_pause_periods` has no validation in the spec (0 is allowed).
+    pub fn set_period(env: Env, period_secs: u64, max_pause_periods: u32) -> Result<(), Error> {
+        let mut config = read_config(&env);
+        config.admin.require_auth();
+        if period_secs == 0 {
+            return Err(Error::InvalidPeriod);
+        }
+        config.period_secs = period_secs;
+        config.max_pause_periods = max_pause_periods;
+        env.storage().instance().set(&DataKey::Config, &config);
+        extend_instance(&env);
+        Ok(())
+    }
+
     // ---- Worker ----
 
     /// `legal_amount = principal` (v2). `months` is validated (1..=60) but affects no amount.
@@ -345,6 +362,76 @@ impl Laya {
         }
         request.status = RequestStatus::Cancelled;
         write_request(&env, &request);
+        extend_instance(&env);
+        Ok(())
+    }
+
+    /// Splits a remittance: `to_lender = min(amount * share_bps / 10000, outstanding)`, the rest goes
+    /// to the family. Allowed on Repaid loans (everything goes to the family). If a transfer fails
+    /// (for example the worker's balance is too low) the whole call reverts.
+    /// Check order (spec is silent): loan exists (6), worker signature, amount > 0 (8).
+    pub fn remit(env: Env, loan_id: u32, amount: i128) -> Result<RemitResult, Error> {
+        let mut loan = read_loan(&env, loan_id)?;
+        loan.worker.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let to_lender = (amount * (loan.share_bps as i128) / 10_000).min(loan.outstanding);
+        let to_family = amount - to_lender;
+
+        let token = token::Client::new(&env, &read_config(&env).token);
+        if to_lender > 0 {
+            token.transfer(&loan.worker, &loan.funder, &to_lender);
+        }
+        if to_family > 0 {
+            token.transfer(&loan.worker, &loan.family, &to_family);
+        }
+
+        let was_active = loan.status == LoanStatus::Active;
+        loan.outstanding -= to_lender;
+        loan.total_repaid += to_lender;
+        loan.total_to_family += to_family;
+        loan.remit_count += 1;
+        let became_repaid = was_active && loan.outstanding == 0;
+        if became_repaid {
+            loan.status = LoanStatus::Repaid;
+        }
+        // Pause clock: only a payment to the funder of 1 USDC or more resets it.
+        // (Decision by Murad, Nov 5: no extra reset when the loan just became Repaid; SPEC.md had one.)
+        if to_lender >= PAUSE_RESET_MIN {
+            loan.last_payment_at = env.ledger().timestamp();
+        }
+        write_loan(&env, &loan);
+        extend_instance(&env);
+
+        Remit {
+            id: loan_id,
+            to_lender,
+            to_family,
+            outstanding: loan.outstanding,
+        }
+        .publish(&env);
+        if became_repaid {
+            Repaid { id: loan_id }.publish(&env);
+        }
+        Ok(RemitResult {
+            to_lender,
+            to_family,
+            outstanding: loan.outstanding,
+        })
+    }
+
+    /// `min_share_bps <= share_bps <= 1500`, otherwise Error 7. `min_share_bps` never changes.
+    /// Allowed on Repaid loans too (spec is silent).
+    pub fn set_share(env: Env, loan_id: u32, share_bps: u32) -> Result<(), Error> {
+        let mut loan = read_loan(&env, loan_id)?;
+        loan.worker.require_auth();
+        if share_bps < loan.min_share_bps || share_bps > 1500 {
+            return Err(Error::InvalidShare);
+        }
+        loan.share_bps = share_bps;
+        write_loan(&env, &loan);
         extend_instance(&env);
         Ok(())
     }
@@ -449,6 +536,23 @@ impl Laya {
 
     pub fn get_loan(env: Env, id: u32) -> Result<Loan, Error> {
         read_loan(&env, id)
+    }
+
+    /// 0 if Repaid, else `(now - last_payment_at) / period_secs`.
+    pub fn missed_periods(env: Env, loan_id: u32) -> Result<u32, Error> {
+        let loan = read_loan(&env, loan_id)?;
+        if loan.status == LoanStatus::Repaid {
+            return Ok(0);
+        }
+        let period_secs = read_config(&env).period_secs;
+        let elapsed = env.ledger().timestamp().saturating_sub(loan.last_payment_at);
+        Ok((elapsed / period_secs).min(u32::MAX as u64) as u32)
+    }
+
+    /// `missed_periods > max_pause_periods`.
+    pub fn is_overdue(env: Env, loan_id: u32) -> Result<bool, Error> {
+        let missed = Self::missed_periods(env.clone(), loan_id)?;
+        Ok(missed > read_config(&env).max_pause_periods)
     }
 
     pub fn get_config(env: Env) -> Config {

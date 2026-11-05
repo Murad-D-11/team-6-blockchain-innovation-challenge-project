@@ -2,8 +2,8 @@
 extern crate std;
 
 use crate::{
-    Config, Error, Laya, LayaClient, Loan, LoanStatus, Mode, Payoff, PayoffRequest,
-    RequestConfirmed, RequestCreated, RequestStatus,
+    Config, Error, Laya, LayaClient, Loan, LoanStatus, Mode, Payoff, PayoffRequest, Remit,
+    RemitResult, Repaid, RequestConfirmed, RequestCreated, RequestStatus,
 };
 use soroban_sdk::{
     testutils::{Address as _, Events as _, Ledger as _, MockAuth, MockAuthInvoke},
@@ -931,4 +931,506 @@ fn loan_id_equals_request_id_for_several_requests() {
     assert_eq!(s.client.get_loan(&r2).share_bps, 1000);
     assert_eq!(s.client.get_loan(&r2).min_share_bps, 1000);
     assert_eq!(s.client.get_loan(&r1).share_bps, 1500);
+}
+
+// ---- repayment (Step 5) ----
+
+/// Funds a request and gives the worker `cash` test tokens. Funding happens at ledger time `t`.
+/// Returns (loan_id, funder).
+fn funded_loan(
+    s: &Setup,
+    a: &Actors,
+    principal: i128,
+    share: u32,
+    mode: Mode,
+    fee: u32,
+    cash: i128,
+    t: u64,
+) -> (u32, Address) {
+    let id = confirmed_request(s, a, principal, share);
+    let funder = funded_user(s, principal);
+    s.env.ledger().set_timestamp(t);
+    s.client.fund_request(&funder, &id, &mode, &fee);
+    StellarAssetClient::new(&s.env, &s.token).mint(&a.worker, &cash);
+    (id, funder)
+}
+
+/// The 190 USDC training loan at 3%: outstanding 1_957_000_000, share 1500, funded at t=1000.
+fn golden_loan(s: &Setup, a: &Actors) -> (u32, Address) {
+    funded_loan(s, a, 1_900_000_000, 1500, Mode::Loan, 300, 100_000_000_000, 1_000)
+}
+
+fn bal(s: &Setup, who: &Address) -> i128 {
+    token_client(s).balance(who)
+}
+
+// v2 golden: normal remit. 4_000_000_000 at share 1500.
+#[test]
+fn golden_normal_remit() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = golden_loan(&s, &a);
+    let worker_before = bal(&s, &a.worker);
+
+    let r = s.client.remit(&id, &4_000_000_000);
+    assert_eq!(
+        r,
+        RemitResult {
+            to_lender: 600_000_000,
+            to_family: 3_400_000_000,
+            outstanding: 1_357_000_000,
+        }
+    );
+    assert_eq!(bal(&s, &funder), 600_000_000);
+    assert_eq!(bal(&s, &a.family), 3_400_000_000);
+    assert_eq!(bal(&s, &a.worker), worker_before - 4_000_000_000);
+
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.outstanding, 1_357_000_000);
+    assert_eq!(loan.total_repaid, 600_000_000);
+    assert_eq!(loan.total_to_family, 3_400_000_000);
+    assert_eq!(loan.remit_count, 1);
+    assert_eq!(loan.status, LoanStatus::Active);
+}
+
+// v2 golden: repayment path 195.70 -> 135.70 -> 75.70 -> 15.70 -> 0, and the final remit
+// (outstanding 157_000_000, amount 4_000_000_000) -> 157_000_000 / 3_843_000_000, Repaid.
+#[test]
+fn golden_repayment_path_and_final_remit() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = golden_loan(&s, &a);
+    assert_eq!(s.client.get_loan(&id).outstanding, 1_957_000_000); // 195.70
+
+    let mut seen = std::vec::Vec::new();
+    for _ in 0..3 {
+        seen.push(s.client.remit(&id, &4_000_000_000).outstanding);
+    }
+    assert_eq!(seen, std::vec![1_357_000_000, 757_000_000, 157_000_000]); // 135.70, 75.70, 15.70
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Active);
+
+    // final remit: outstanding is 157_000_000
+    assert_eq!(s.client.get_loan(&id).outstanding, 157_000_000);
+    let last = s.client.remit(&id, &4_000_000_000);
+    assert_eq!(
+        last,
+        RemitResult {
+            to_lender: 157_000_000,
+            to_family: 3_843_000_000,
+            outstanding: 0,
+        }
+    );
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.status, LoanStatus::Repaid);
+    assert_eq!(loan.outstanding, 0);
+    assert_eq!(loan.remit_count, 4);
+    // the funder got principal + fee back exactly
+    assert_eq!(loan.total_repaid, 1_957_000_000);
+    assert_eq!(bal(&s, &funder), 1_957_000_000);
+    assert_eq!(loan.total_to_family, 4 * 4_000_000_000 - 1_957_000_000);
+}
+
+// v2 golden: Grant. outstanding 0 / Repaid, then remit 4_000_000_000 -> 0 and 4_000_000_000.
+#[test]
+fn golden_grant_remit_all_to_family() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, employer) =
+        funded_loan(&s, &a, 650_000_000, 1500, Mode::Grant, 0, 10_000_000_000, 1_000);
+    let before = bal(&s, &employer);
+
+    let r = s.client.remit(&id, &4_000_000_000);
+    assert_eq!(
+        r,
+        RemitResult {
+            to_lender: 0,
+            to_family: 4_000_000_000,
+            outstanding: 0,
+        }
+    );
+    assert_eq!(bal(&s, &employer), before); // nothing to the employer
+    assert_eq!(bal(&s, &a.family), 4_000_000_000);
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.status, LoanStatus::Repaid);
+    assert_eq!(loan.total_repaid, 0);
+    assert_eq!(loan.total_to_family, 4_000_000_000);
+    assert_eq!(loan.remit_count, 1);
+}
+
+// v2 golden: dust remit. 50_000_000 at share 1500 -> 7_500_000, pause clock not reset.
+#[test]
+fn golden_dust_remit_does_not_reset_clock() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = golden_loan(&s, &a); // last_payment_at = 1000
+    s.env.ledger().set_timestamp(1_100);
+
+    let r = s.client.remit(&id, &50_000_000);
+    assert_eq!(r.to_lender, 7_500_000);
+    assert_eq!(r.to_family, 42_500_000);
+    assert_eq!(r.outstanding, 1_957_000_000 - 7_500_000);
+    assert_eq!(bal(&s, &funder), 7_500_000);
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.last_payment_at, 1_000); // NOT reset
+    assert_eq!(loan.remit_count, 1);
+}
+
+// Pause clock: only a payment to the funder of >= 1 USDC (10_000_000) resets it.
+#[test]
+fn pause_clock_threshold_is_exactly_one_usdc_to_the_funder() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a); // share 1500, last_payment_at = 1000
+
+    // amount 66_666_666 -> to_lender 9_999_999 (one stroop under 1 USDC): no reset
+    s.env.ledger().set_timestamp(1_100);
+    let r = s.client.remit(&id, &66_666_666);
+    assert_eq!(r.to_lender, 9_999_999);
+    assert_eq!(s.client.get_loan(&id).last_payment_at, 1_000);
+
+    // amount 66_666_667 -> to_lender 10_000_000 (exactly 1 USDC): reset
+    s.env.ledger().set_timestamp(1_200);
+    let r = s.client.remit(&id, &66_666_667);
+    assert_eq!(r.to_lender, 10_000_000);
+    assert_eq!(s.client.get_loan(&id).last_payment_at, 1_200);
+}
+
+#[test]
+fn a_big_remittance_with_a_small_share_to_the_funder_does_not_reset_the_clock() {
+    // What counts is the payment to the FUNDER, not the size of the remittance.
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 1_900_000_000, 100, Mode::Loan, 300, 100_000_000_000, 1_000);
+    s.env.ledger().set_timestamp(1_100);
+    // 900_000_000 (90 USDC) at 1% -> 9_000_000 to the funder, under 1 USDC
+    let r = s.client.remit(&id, &900_000_000);
+    assert_eq!(r.to_lender, 9_000_000);
+    assert_eq!(s.client.get_loan(&id).last_payment_at, 1_000);
+}
+
+#[test]
+fn final_small_payment_that_repays_the_loan_does_not_reset_the_clock() {
+    // Murad's rule: only >= 1 USDC to the funder resets the clock, even when the loan is repaid.
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    s.env.ledger().set_timestamp(1_100);
+    let r = s.client.remit(&id, &100_000_000);
+    assert_eq!(r.to_lender, 5_000_000); // capped at outstanding, under 1 USDC
+    assert_eq!(r.outstanding, 0);
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.status, LoanStatus::Repaid);
+    assert_eq!(loan.last_payment_at, 1_000);
+}
+
+#[test]
+fn to_lender_is_capped_at_outstanding() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    let r = s.client.remit(&id, &1_000_000_000);
+    assert_eq!(r.to_lender, 5_000_000);
+    assert_eq!(r.to_family, 995_000_000);
+    assert_eq!(bal(&s, &funder), 5_000_000);
+}
+
+#[test]
+fn remit_after_repaid_sends_everything_to_family() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    s.client.remit(&id, &100_000_000); // repays
+    let funder_after = bal(&s, &funder);
+    let r = s.client.remit(&id, &100_000_000);
+    assert_eq!(r.to_lender, 0);
+    assert_eq!(r.to_family, 100_000_000);
+    assert_eq!(bal(&s, &funder), funder_after);
+    assert_eq!(s.client.get_loan(&id).remit_count, 2);
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Repaid);
+}
+
+#[test]
+fn remit_emits_remit_event() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a);
+    s.client.remit(&id, &4_000_000_000);
+    let expected = Remit {
+        id,
+        to_lender: 600_000_000,
+        to_family: 3_400_000_000,
+        outstanding: 1_357_000_000,
+    };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id),
+        std::vec![expected.to_xdr(&s.env, &s.contract_id)]
+    );
+}
+
+#[test]
+fn final_remit_emits_remit_then_repaid() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    s.client.remit(&id, &100_000_000);
+    let e1 = Remit {
+        id,
+        to_lender: 5_000_000,
+        to_family: 95_000_000,
+        outstanding: 0,
+    };
+    let e2 = Repaid { id };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id),
+        std::vec![
+            e1.to_xdr(&s.env, &s.contract_id),
+            e2.to_xdr(&s.env, &s.contract_id)
+        ]
+    );
+}
+
+#[test]
+fn remit_on_an_already_repaid_loan_emits_no_repaid_event() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _e) = funded_loan(&s, &a, 650_000_000, 1500, Mode::Grant, 0, 10_000_000_000, 1_000);
+    s.client.remit(&id, &4_000_000_000);
+    let e1 = Remit {
+        id,
+        to_lender: 0,
+        to_family: 4_000_000_000,
+        outstanding: 0,
+    };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id),
+        std::vec![e1.to_xdr(&s.env, &s.contract_id)]
+    );
+}
+
+// Error 8 / Error 6 on remit
+#[test]
+fn error_8_remit_amount_must_be_positive() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a);
+    assert_eq!(err(s.client.try_remit(&id, &0)), Error::InvalidAmount);
+    assert_eq!(err(s.client.try_remit(&id, &-1)), Error::InvalidAmount);
+    assert_eq!(s.client.get_loan(&id).remit_count, 0);
+}
+
+#[test]
+fn error_6_remit_loan_not_found() {
+    let s = setup();
+    let _a = actors(&s);
+    assert_eq!(err(s.client.try_remit(&1, &100)), Error::LoanNotFound);
+    assert_eq!(err(s.client.try_set_share(&1, &1000)), Error::LoanNotFound);
+    assert_eq!(err(s.client.try_missed_periods(&1)), Error::LoanNotFound);
+    assert_eq!(err(s.client.try_is_overdue(&1)), Error::LoanNotFound);
+}
+
+#[test]
+fn remit_requires_worker_auth_and_wrong_signer_fails() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = golden_loan(&s, &a);
+    s.client.remit(&id, &100_000_000);
+    assert_eq!(s.env.auths()[0].0, a.worker);
+
+    // the funder (or anyone else) cannot remit on the worker's behalf
+    s.env.mock_auths(&[MockAuth {
+        address: &funder,
+        invoke: &MockAuthInvoke {
+            contract: &s.contract_id,
+            fn_name: "remit",
+            args: (id, 100_000_000i128).into_val(&s.env),
+            sub_invokes: &[],
+        },
+    }]);
+    assert!(s.client.try_remit(&id, &100_000_000).is_err());
+    assert_eq!(s.client.get_loan(&id).remit_count, 1);
+}
+
+#[test]
+fn remit_with_too_little_balance_reverts_and_changes_nothing() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) =
+        funded_loan(&s, &a, 1_900_000_000, 1500, Mode::Loan, 300, 1_000_000_000, 1_000);
+    let before = s.client.get_loan(&id);
+    assert!(s.client.try_remit(&id, &4_000_000_000).is_err()); // worker has only 1_000_000_000
+    assert_eq!(s.client.get_loan(&id), before);
+    assert_eq!(bal(&s, &a.worker), 1_000_000_000);
+    assert_eq!(bal(&s, &funder), 0);
+    assert_eq!(bal(&s, &a.family), 0);
+}
+
+// set_share
+#[test]
+fn set_share_changes_the_split() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 1_900_000_000, 1000, Mode::Loan, 300, 100_000_000_000, 1_000);
+    s.client.set_share(&id, &1500);
+    assert_eq!(s.env.auths()[0].0, a.worker);
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.share_bps, 1500);
+    assert_eq!(loan.min_share_bps, 1000); // the floor never moves
+    assert_eq!(s.client.remit(&id, &1_000_000_000).to_lender, 150_000_000);
+    // lowering back to the floor is allowed
+    s.client.set_share(&id, &1000);
+    assert_eq!(s.client.remit(&id, &1_000_000_000).to_lender, 100_000_000);
+}
+
+// v2 golden: share floor. set_share(1400) when min_share_bps is 1500 -> Error 7.
+#[test]
+fn golden_error_7_share_below_floor() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a); // min_share_bps = 1500
+    assert_eq!(s.client.get_loan(&id).min_share_bps, 1500);
+    assert_eq!(err(s.client.try_set_share(&id, &1400)), Error::InvalidShare);
+    assert_eq!(s.client.get_loan(&id).share_bps, 1500); // unchanged
+}
+
+#[test]
+fn error_7_set_share_bounds() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 1_900_000_000, 1000, Mode::Loan, 300, 0, 1_000);
+    assert_eq!(err(s.client.try_set_share(&id, &999)), Error::InvalidShare); // below floor
+    assert_eq!(err(s.client.try_set_share(&id, &1501)), Error::InvalidShare); // above 1500
+    assert_eq!(err(s.client.try_set_share(&id, &0)), Error::InvalidShare);
+    s.client.set_share(&id, &1000); // floor itself
+    s.client.set_share(&id, &1500); // ceiling itself
+    // a loan funded at the lowest share (100) can go down to 100 but not 99
+    let (low, _f2) = funded_loan(&s, &a, 1_900_000_000, 100, Mode::Loan, 300, 0, 1_000);
+    assert_eq!(err(s.client.try_set_share(&low, &99)), Error::InvalidShare);
+    s.client.set_share(&low, &100);
+}
+
+#[test]
+fn set_share_by_wrong_signer_fails() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, funder) = golden_loan(&s, &a);
+    s.env.mock_auths(&[MockAuth {
+        address: &funder,
+        invoke: &MockAuthInvoke {
+            contract: &s.contract_id,
+            fn_name: "set_share",
+            args: (id, 1500u32).into_val(&s.env),
+            sub_invokes: &[],
+        },
+    }]);
+    assert!(s.client.try_set_share(&id, &1500).is_err());
+}
+
+// set_period
+#[test]
+fn admin_can_set_period() {
+    let s = setup();
+    s.env.mock_all_auths();
+    s.client.set_period(&120, &5);
+    assert_eq!(s.env.auths()[0].0, s.admin);
+    let c = s.client.get_config();
+    assert_eq!(c.period_secs, 120);
+    assert_eq!(c.max_pause_periods, 5);
+    assert_eq!(c.admin, s.admin); // other fields untouched
+    assert_eq!(c.token, s.token);
+}
+
+#[test]
+fn error_11_set_period_zero() {
+    let s = setup();
+    s.env.mock_all_auths();
+    assert_eq!(err(s.client.try_set_period(&0, &3)), Error::InvalidPeriod);
+    let c = s.client.get_config();
+    assert_eq!((c.period_secs, c.max_pause_periods), (60, 3)); // unchanged
+    // max_pause_periods = 0 is allowed
+    s.client.set_period(&60, &0);
+    assert_eq!(s.client.get_config().max_pause_periods, 0);
+}
+
+#[test]
+fn set_period_by_non_admin_fails() {
+    let s = setup();
+    let intruder = Address::generate(&s.env);
+    s.env.mock_auths(&[MockAuth {
+        address: &intruder,
+        invoke: &MockAuthInvoke {
+            contract: &s.contract_id,
+            fn_name: "set_period",
+            args: (120u64, 5u32).into_val(&s.env),
+            sub_invokes: &[],
+        },
+    }]);
+    assert!(s.client.try_set_period(&120, &5).is_err());
+    assert_eq!(s.client.get_config().period_secs, 60);
+}
+
+// missed_periods / is_overdue
+#[test]
+fn missed_periods_and_overdue_follow_the_rule() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a); // period 60, max 3, last_payment_at = 1000
+    let at = |t: u64| s.env.ledger().set_timestamp(t);
+
+    at(1_000);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (0, false));
+    at(1_059);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (0, false));
+    at(1_060);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (1, false));
+    at(1_239); // 239 / 60 = 3: still not "more than 3"
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (3, false));
+    at(1_240); // 240 / 60 = 4 > 3
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (4, true));
+}
+
+#[test]
+fn a_real_payment_resets_the_overdue_count_but_dust_does_not() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a);
+
+    s.env.ledger().set_timestamp(1_300); // 5 periods missed, overdue
+    assert!(s.client.is_overdue(&id));
+    s.client.remit(&id, &50_000_000); // dust: 7_500_000 to the funder
+    assert_eq!(s.client.missed_periods(&id), 5);
+    assert!(s.client.is_overdue(&id));
+
+    s.client.remit(&id, &4_000_000_000); // 600_000_000 to the funder: reset
+    assert_eq!(s.client.missed_periods(&id), 0);
+    assert!(!s.client.is_overdue(&id));
+    assert_eq!(s.client.get_loan(&id).last_payment_at, 1_300);
+}
+
+#[test]
+fn repaid_loans_are_never_overdue() {
+    let s = setup();
+    let a = actors(&s);
+    let (grant, _e) =
+        funded_loan(&s, &a, 650_000_000, 1500, Mode::Grant, 0, 10_000_000_000, 1_000);
+    let (paid, _f) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    s.client.remit(&paid, &100_000_000);
+    s.env.ledger().set_timestamp(1_000_000);
+    for id in [grant, paid] {
+        assert_eq!(s.client.missed_periods(&id), 0);
+        assert!(!s.client.is_overdue(&id));
+    }
+}
+
+#[test]
+fn set_period_changes_missed_periods() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a);
+    s.env.ledger().set_timestamp(1_240);
+    assert_eq!(s.client.missed_periods(&id), 4);
+    s.client.set_period(&120, &3);
+    assert_eq!(s.client.missed_periods(&id), 2); // 240 / 120
+    assert!(!s.client.is_overdue(&id));
+    s.client.set_period(&120, &1);
+    assert!(s.client.is_overdue(&id)); // 2 > 1
 }
