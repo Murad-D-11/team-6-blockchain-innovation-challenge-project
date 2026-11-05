@@ -45,7 +45,7 @@ async function expectErr(p: Promise<unknown>, code: number, msg?: string) {
   throw new Error("expected LayaError " + code);
 }
 
-async function request(principal = "860", months = 12, shareBps = 1500) {
+async function request(principal = "190", months = 12, shareBps = 1500) {
   as("worker");
   const { requestId } = await mock.requestPayoff({
     family: A.family,
@@ -77,13 +77,15 @@ beforeEach(() => {
 });
 
 describe("initial state", () => {
-  it("has the creditor registered, balances and trustlines", async () => {
+  it("has both providers registered, balances and trustlines", async () => {
     expect(await mock.isCreditor(A.creditor)).toBe(true);
+    expect(await mock.isCreditor(A.clinic)).toBe(true);
     expect(await mock.isCreditor(A.worker)).toBe(false);
     expect(await mock.getBalance(A.worker)).toBe(U("2000"));
     expect(await mock.getBalance(A.funder)).toBe(U("10000"));
+    expect(await mock.getBalance(A.employer)).toBe(U("10000"));
     expect(await mock.getBalance(A.family)).toBe(0n);
-    for (const a of [A.worker, A.family, A.funder, A.creditor]) expect(await mock.hasTrustline(a)).toBe(true);
+    for (const a of [A.worker, A.family, A.funder, A.creditor, A.clinic, A.employer]) expect(await mock.hasTrustline(a)).toBe(true);
     expect(await mock.hasTrustline(A.admin)).toBe(false);
     expect(await mock.getConfig()).toEqual({
       admin: A.admin,
@@ -100,11 +102,11 @@ describe("initial state", () => {
 });
 
 describe("golden flow", () => {
-  it("request 860 / 12 months / 15% -> 928.80; fund Loan 3% -> 956.664; remit 400", async () => {
+  it("request 190 / 12 months / 15% -> 190; fund Loan 3% -> 195.70; remit 400", async () => {
     const id = await request();
     expect(id).toBe(1);
     const req = await mock.getRequest(1);
-    expect(req.legalAmount).toBe(9_288_000_000n);
+    expect(req.legalAmount).toBe(1_900_000_000n);
     expect(req.status).toBe("Open");
     expect(req.confirmedAt).toBe(0);
     expect(req.docHash).toBe(HASH);
@@ -120,18 +122,18 @@ describe("golden flow", () => {
     expect(f.loanId).toBe(1);
     expect(f.txHash).toMatch(/^[0-9a-f]{64}$/);
     const loan = await mock.getLoan(1);
-    expect(loan.outstanding).toBe(9_566_640_000n);
+    expect(loan.outstanding).toBe(1_957_000_000n);
     expect(loan.status).toBe("Active");
     expect(loan.minShareBps).toBe(1500);
     expect(loan.fundedAt).toBe(t);
-    expect(await mock.getBalance(A.creditor)).toBe(9_288_000_000n);
-    expect(await mock.getBalance(A.funder)).toBe(U("10000") - 9_288_000_000n);
+    expect(await mock.getBalance(A.creditor)).toBe(1_900_000_000n);
+    expect(await mock.getBalance(A.funder)).toBe(U("10000") - 1_900_000_000n);
 
     as("worker");
     const r = await mock.remit({ loanId: 1, amount: U("400") });
     expect(r.toLender).toBe(600_000_000n);
     expect(r.toFamily).toBe(3_400_000_000n);
-    expect(r.outstanding).toBe(8_966_640_000n);
+    expect(r.outstanding).toBe(1_357_000_000n);
     expect(await mock.getBalance(A.family)).toBe(3_400_000_000n);
     expect(await mock.getBalance(A.worker)).toBe(U("2000") - U("400"));
     const after = await mock.getLoan(1);
@@ -141,14 +143,14 @@ describe("golden flow", () => {
   });
 
   it("final remit repays the loan", async () => {
-    const id = await funded("Loan", 0, "10", 1, 1500); // outstanding 100_666_666
+    const id = await funded("Loan", 0, "10", 1, 1500); // outstanding 100_000_000
     const before = await mock.getLoan(id);
-    expect(before.outstanding).toBe(100_666_666n);
+    expect(before.outstanding).toBe(100_000_000n);
     t += 100;
     as("worker");
     const r = await mock.remit({ loanId: id, amount: U("400") });
-    expect(r.toLender).toBe(100_666_666n);
-    expect(r.toFamily).toBe(U("400") - 100_666_666n);
+    expect(r.toLender).toBe(100_000_000n);
+    expect(r.toFamily).toBe(U("400") - 100_000_000n);
     expect(r.outstanding).toBe(0n);
     const l = await mock.getLoan(id);
     expect(l.status).toBe("Repaid");
@@ -166,7 +168,7 @@ describe("golden flow", () => {
     const r = await mock.remit({ loanId: id, amount: U("400") });
     expect(r.toLender).toBe(0n);
     expect(r.toFamily).toBe(4_000_000_000n);
-    expect(await mock.getBalance(A.funder)).toBe(U("10000") - 9_288_000_000n); // no repayment received
+    expect(await mock.getBalance(A.funder)).toBe(U("10000") - 1_900_000_000n); // no repayment received
   });
 });
 
@@ -232,13 +234,13 @@ describe("pause clock", () => {
 
 describe("errors", () => {
   it("set_share below the floor -> 7", async () => {
-    const id = await funded("Loan", 300, "860", 12, 1500);
+    const id = await funded("Loan", 300, "190", 12, 1500);
     as("worker");
     await expectErr(mock.setShare({ loanId: id, shareBps: 1400 }), 7);
     await mock.setShare({ loanId: id, shareBps: 1500 });
   });
   it("set_share can be raised up to 15% and not above", async () => {
-    const id = await funded("Loan", 300, "860", 12, 1000);
+    const id = await funded("Loan", 300, "190", 12, 1000);
     as("worker");
     await mock.setShare({ loanId: id, shareBps: 1500 });
     expect((await mock.getLoan(id)).shareBps).toBe(1500);
@@ -273,7 +275,7 @@ describe("errors", () => {
   });
   it("request validation", async () => {
     as("worker");
-    const base = { family: A.family, creditor: A.creditor, principal: U("860"), months: 12, shareBps: 1500, docHash: HASH };
+    const base = { family: A.family, creditor: A.creditor, principal: U("190"), months: 12, shareBps: 1500, docHash: HASH };
     await expectErr(mock.requestPayoff({ ...base, creditor: A.funder }), 3);
     await expectErr(mock.requestPayoff({ ...base, principal: 0n }), 8);
     await expectErr(mock.requestPayoff({ ...base, principal: 1_000_000_000_000_001n }), 8);
@@ -321,6 +323,68 @@ describe("errors", () => {
     await expectErr(mock.fundRequest({ requestId: id, mode: "Loan", feeBps: 0 }), 0, "Not enough test USDC");
     expect((await mock.getRequest(id)).status).toBe("Confirmed");
   });
+  it("a failed fundRequest creates no loan and leaves balances unchanged", async () => {
+    const id = await confirmed("20000", 12);
+    as("funder");
+    const before = {
+      funder: await mock.getBalance(A.funder),
+      creditor: await mock.getBalance(A.creditor),
+      events: (await mock.getEvents()).length,
+    };
+    await expectErr(mock.fundRequest({ requestId: id, mode: "Loan", feeBps: 300 }), 0, "Not enough test USDC");
+    expect(await mock.listLoans()).toEqual([]);
+    await expectErr(mock.getLoan(id), 6);
+    expect((await mock.getRequest(id)).status).toBe("Confirmed");
+    expect(await mock.getBalance(A.funder)).toBe(before.funder);
+    expect(await mock.getBalance(A.creditor)).toBe(before.creditor);
+    expect((await mock.getEvents()).length).toBe(before.events);
+  });
+});
+
+describe("v2 providers and employer", () => {
+  async function clinicRequest() {
+    as("worker");
+    const { requestId } = await mock.requestPayoff({
+      family: A.family,
+      creditor: A.clinic,
+      principal: U("65"),
+      months: 12,
+      shareBps: 1500,
+      docHash: HASH,
+    });
+    return requestId;
+  }
+  it("the clinic address can confirm a request addressed to it (and the creditor cannot)", async () => {
+    const id = await clinicRequest();
+    as("creditor");
+    await expectErr(mock.confirmRequest(id), 0, "Switch to the Creditor account to do this");
+    as("clinic");
+    expect(mock.address()).toBe(A.clinic);
+    await mock.confirmRequest(id);
+    const r = await mock.getRequest(id);
+    expect(r.status).toBe("Confirmed");
+    expect(r.legalAmount).toBe(650_000_000n);
+  });
+  it("the employer funds a 65 USDC request as a Grant: loan is Repaid, outstanding 0", async () => {
+    const id = await clinicRequest();
+    as("clinic");
+    await mock.confirmRequest(id);
+    as("employer");
+    const f = await mock.fundRequest({ requestId: id, mode: "Grant", feeBps: 0 });
+    expect(f.loanId).toBe(id);
+    const loan = await mock.getLoan(id);
+    expect(loan.mode).toBe("Grant");
+    expect(loan.funder).toBe(A.employer);
+    expect(loan.legalAmount).toBe(650_000_000n);
+    expect(loan.outstanding).toBe(0n);
+    expect(loan.status).toBe("Repaid");
+    expect(await mock.getBalance(A.clinic)).toBe(650_000_000n);
+    expect(await mock.getBalance(A.employer)).toBe(U("10000") - 650_000_000n);
+    as("worker");
+    const r = await mock.remit({ loanId: id, amount: U("400") });
+    expect(r.toLender).toBe(0n);
+    expect(r.toFamily).toBe(4_000_000_000n);
+  });
 });
 
 describe("lists, events, admin", () => {
@@ -348,7 +412,7 @@ describe("lists, events, admin", () => {
       "remit:1",
     ]);
     expect((await mock.getEvents(2)).map((e) => e.type)).toEqual(["request_created"]);
-    expect(all[4].data).toEqual({ toLender: 600_000_000n, toFamily: 3_400_000_000n, outstanding: 8_966_640_000n });
+    expect(all[4].data).toEqual({ toLender: 600_000_000n, toFamily: 3_400_000_000n, outstanding: 1_357_000_000n });
   });
   it("admin can register a creditor", async () => {
     as("admin");
@@ -362,7 +426,7 @@ describe("persistence", () => {
     await funded();
     const other = make("?role=funder");
     const loan = await other.getLoan(1);
-    expect(loan.outstanding).toBe(9_566_640_000n);
+    expect(loan.outstanding).toBe(1_957_000_000n);
     expect(typeof loan.legalAmount).toBe("bigint");
     expect(storage.getItem(MOCK_STORAGE_KEY)).toContain("$big");
   });

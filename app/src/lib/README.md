@@ -55,7 +55,7 @@ Every call takes about 300 ms on the mock, so show a loading state.
 - `?role=worker|family|funder|creditor|admin` on any URL acts as that account. It is remembered for the browser tab (sessionStorage). With no role, the mock acts as the worker.
 - `?mockReset=1` wipes the mock's saved state (when the page loads).
 - `/dev` runs the golden flow step by step and has a **Reset mock** button.
-- State lives in `localStorage` under `laya:mock:v1`, so a request made as the worker shows up for the creditor in another tab. Every call re-reads storage, so tabs stay in sync.
+- State lives in `localStorage` under `laya:mock:v2`, so a request made as the worker shows up for the creditor in another tab. Every call re-reads storage, so tabs stay in sync.
 - Time is real (`Date.now()`), and a period is 60 s (`config.periodSecs`). Wait 60 s after funding to see **Paused 1 of 3**.
 
 ## Decisions (not spelled out in the spec)

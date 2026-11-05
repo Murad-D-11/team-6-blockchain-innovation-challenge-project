@@ -28,7 +28,7 @@ import {
 } from "../types";
 import { notifyAddressChanged } from "./wallet-events";
 
-export const MOCK_STORAGE_KEY = "laya:mock:v1";
+export const MOCK_STORAGE_KEY = "laya:mock:v2";
 const ROLE_KEY = "laya:mock:role";
 const ONE = 10_000_000n;
 
@@ -73,18 +73,20 @@ const ROLE_LABEL: Record<AccountRole, string> = {
   creditor: "Creditor",
   admin: "Admin",
   employer: "Employer",
+  clinic: "Clinic",
 };
 
 function initialState(): State {
   return {
     periodSecs: config.periodSecs,
     maxPausePeriods: config.maxPausePeriods,
-    creditors: [config.accounts.creditor],
+    creditors: [config.accounts.creditor, config.accounts.clinic],
     requests: [],
     loans: [],
     balances: {
       [config.accounts.worker]: 2_000n * ONE,
       [config.accounts.funder]: 10_000n * ONE,
+      [config.accounts.employer]: 10_000n * ONE,
     },
     events: [],
     ledger: 1_000,
@@ -485,7 +487,7 @@ export class MockLayaClient implements LayaClient {
   async hasTrustline(address: string): Promise<boolean> {
     await this.wait();
     const a = config.accounts;
-    return [a.worker, a.family, a.funder, a.creditor].includes(address);
+    return [a.worker, a.family, a.funder, a.creditor, a.clinic, a.employer].includes(address);
   }
 
   async getBalance(address: string): Promise<bigint> {
