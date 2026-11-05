@@ -1,4 +1,4 @@
-import raw from "@/config/testnet.json";
+import raw from "../config/testnet.json";
 
 export interface TestnetConfig {
   network: string;

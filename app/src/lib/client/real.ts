@@ -12,7 +12,8 @@ import {
 } from "../types";
 import { getUsdcBalance, hasUsdcTrustline } from "./horizon";
 import { notifyAddressChanged } from "./wallet-events";
-import { connectFreighter } from "./wallet";
+import { FreighterSigner } from "./freighter-signer";
+import type { Signer } from "./signer";
 
 const notReady = (): never => {
   throw new LayaError(0, "Real client not ready yet");
@@ -21,8 +22,13 @@ const notReady = (): never => {
 /** Wallet and Horizon reads are live; every other method is a STUB until Nov 5-6 and throws LayaError(0, "Real client not ready yet"). */
 export class RealLayaClient implements LayaClient {
   private addr: string | null = null;
+  private readonly signer: Signer;
+  /** The signer is used by the contract calls once they exist. Default: Freighter. */
+  constructor(opts: { signer?: Signer } = {}) {
+    this.signer = opts.signer ?? new FreighterSigner();
+  }
   async connect(): Promise<string> {
-    this.addr = await connectFreighter();
+    this.addr = await this.signer.address();
     notifyAddressChanged();
     return this.addr;
   }

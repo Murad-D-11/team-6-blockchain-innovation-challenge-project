@@ -19,12 +19,16 @@ describe("tracked env files hold no secrets", () => {
   for (const f of files) {
     const text = readFileSync(f.path, "utf8");
 
-    it(`${f.name}: every non-comment line is a NEXT_PUBLIC_ variable`, () => {
+    it(`${f.name}: every non-comment line is a NEXT_PUBLIC_ variable${f.name === ".env.example" ? " or an empty LAYA_SECRET_ name" : ""}`, () => {
       const lines = text
         .split(/\r?\n/)
         .map((l) => l.trim())
         .filter((l) => l !== "" && !l.startsWith("#"));
-      for (const line of lines) expect(line.startsWith("NEXT_PUBLIC_"), `bad line: ${line.split("=")[0]}`).toBe(true);
+      for (const line of lines) {
+        // .env.example may list LAYA_SECRET_* key NAMES, but only with an empty value.
+        const nameOnly = f.name === ".env.example" && /^LAYA_SECRET_[A-Z_]+=$/.test(line);
+        expect(line.startsWith("NEXT_PUBLIC_") || nameOnly, `bad line: ${line.split("=")[0]}`).toBe(true);
+      }
     });
 
     it(`${f.name}: contains nothing that looks like a Stellar secret key`, () => {

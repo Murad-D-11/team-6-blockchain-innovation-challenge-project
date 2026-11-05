@@ -98,3 +98,13 @@ describe("connect (Freighter)", () => {
     await expect(new RealLayaClient().connect()).rejects.toMatchObject({ code: 0, message: expect.stringMatching(/rejected/i) });
   });
 });
+
+describe("RealLayaClient signer injection", () => {
+  it("uses an injected signer for connect() instead of Freighter", async () => {
+    const signer = { address: vi.fn().mockResolvedValue(ADDR), signTransaction: vi.fn() };
+    const c = new RealLayaClient({ signer });
+    expect(await c.connect()).toBe(ADDR);
+    expect(c.address()).toBe(ADDR);
+    expect(fr.isConnected).not.toHaveBeenCalled();
+  });
+});
