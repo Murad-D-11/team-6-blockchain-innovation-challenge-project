@@ -397,9 +397,9 @@ impl Laya {
         if became_repaid {
             loan.status = LoanStatus::Repaid;
         }
-        // Pause clock: only a payment to the funder of 1 USDC or more resets it.
-        // (Decision by Murad, Nov 5: no extra reset when the loan just became Repaid; SPEC.md had one.)
-        if to_lender >= PAUSE_RESET_MIN {
+        // Pause clock (SPEC.md): resets only on a payment to the funder of 1 USDC or more,
+        // or when this payment just fully repaid the loan (even if it is under 1 USDC).
+        if to_lender >= PAUSE_RESET_MIN || became_repaid {
             loan.last_payment_at = env.ledger().timestamp();
         }
         write_loan(&env, &loan);

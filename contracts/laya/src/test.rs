@@ -1109,8 +1109,8 @@ fn a_big_remittance_with_a_small_share_to_the_funder_does_not_reset_the_clock() 
 }
 
 #[test]
-fn final_small_payment_that_repays_the_loan_does_not_reset_the_clock() {
-    // Murad's rule: only >= 1 USDC to the funder resets the clock, even when the loan is repaid.
+fn final_small_payment_that_repays_the_loan_resets_the_clock() {
+    // SPEC.md: the clock also resets when a payment fully repays the loan, even under 1 USDC.
     let s = setup();
     let a = actors(&s);
     let (id, _f) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
@@ -1120,7 +1120,33 @@ fn final_small_payment_that_repays_the_loan_does_not_reset_the_clock() {
     assert_eq!(r.outstanding, 0);
     let loan = s.client.get_loan(&id);
     assert_eq!(loan.status, LoanStatus::Repaid);
-    assert_eq!(loan.last_payment_at, 1_000);
+    assert_eq!(loan.last_payment_at, 1_100); // reset by the repaying payment
+}
+
+#[test]
+fn a_remit_on_an_already_repaid_loan_does_not_reset_the_clock() {
+    // "Just became Repaid" applies only to the payment that repays it, not to later remits.
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 5_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    s.env.ledger().set_timestamp(1_100);
+    s.client.remit(&id, &100_000_000); // repays: clock -> 1_100
+    s.env.ledger().set_timestamp(1_500);
+    s.client.remit(&id, &100_000_000); // to_lender 0
+    assert_eq!(s.client.get_loan(&id).last_payment_at, 1_100);
+}
+
+#[test]
+fn a_dust_remit_that_does_not_repay_still_does_not_reset_the_clock() {
+    // The extra condition must not weaken the dust rule while the loan stays Active.
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = funded_loan(&s, &a, 50_000_000, 1500, Mode::Loan, 0, 1_000_000_000, 1_000);
+    s.env.ledger().set_timestamp(1_100);
+    let r = s.client.remit(&id, &50_000_000); // 7_500_000 to the funder, 42_500_000 left
+    assert_eq!(r.outstanding, 42_500_000);
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Active);
+    assert_eq!(s.client.get_loan(&id).last_payment_at, 1_000);
 }
 
 #[test]
@@ -1433,4 +1459,35 @@ fn set_period_changes_missed_periods() {
     assert!(!s.client.is_overdue(&id));
     s.client.set_period(&120, &1);
     assert!(s.client.is_overdue(&id)); // 2 > 1
+}
+
+// ---- golden table and error numbers (Step 6) ----
+
+// The numbers are part of the shared interface (docs/SPEC.md "Shared contract A"): never change them.
+#[test]
+fn error_codes_have_the_exact_spec_numbers() {
+    assert_eq!(Error::AlreadyInitialized as u32, 1); // reserved, unused
+    assert_eq!(Error::NotInitialized as u32, 2); // reserved, unused
+    assert_eq!(Error::CreditorNotRegistered as u32, 3);
+    assert_eq!(Error::RequestNotFound as u32, 4);
+    assert_eq!(Error::InvalidRequestStatus as u32, 5);
+    assert_eq!(Error::LoanNotFound as u32, 6);
+    assert_eq!(Error::InvalidShare as u32, 7);
+    assert_eq!(Error::InvalidAmount as u32, 8);
+    assert_eq!(Error::InvalidMonths as u32, 9);
+    assert_eq!(Error::InvalidFee as u32, 10);
+    assert_eq!(Error::InvalidPeriod as u32, 11);
+}
+
+// The contract returns the number itself on the wire (what the TypeScript client sees).
+#[test]
+fn contract_errors_carry_their_numbers_through_the_client() {
+    let s = setup();
+    let _a = actors(&s);
+    let e = s.client.try_get_request(&1).unwrap_err().unwrap();
+    assert_eq!(e as u32, 4);
+    let e = s.client.try_get_loan(&1).unwrap_err().unwrap();
+    assert_eq!(e as u32, 6);
+    let e = s.client.try_set_period(&0, &3).unwrap_err().unwrap();
+    assert_eq!(e as u32, 11);
 }
