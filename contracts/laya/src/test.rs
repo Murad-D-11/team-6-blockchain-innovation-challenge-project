@@ -2,11 +2,12 @@
 extern crate std;
 
 use crate::{
-    Config, DataKey, Error, Laya, LayaClient, PayoffRequest, RequestConfirmed, RequestCreated,
-    RequestStatus,
+    Config, Error, Laya, LayaClient, Loan, LoanStatus, Mode, Payoff, PayoffRequest,
+    RequestConfirmed, RequestCreated, RequestStatus,
 };
 use soroban_sdk::{
     testutils::{Address as _, Events as _, Ledger as _, MockAuth, MockAuthInvoke},
+    token::{Client as TokenClient, StellarAssetClient},
     Address, BytesN, Env, Event as _, IntoVal,
 };
 
@@ -236,16 +237,6 @@ fn err<T: core::fmt::Debug>(
         Err(Ok(e)) => e,
         other => panic!("expected a contract error, got {:?}", other),
     }
-}
-
-/// Test-only: put a request into any status (the funding path arrives in Step 4).
-fn force_status(s: &Setup, id: u32, status: RequestStatus) {
-    s.env.as_contract(&s.contract_id, || {
-        let key = DataKey::Request(id);
-        let mut r: PayoffRequest = s.env.storage().persistent().get(&key).unwrap();
-        r.status = status;
-        s.env.storage().persistent().set(&key, &r);
-    });
 }
 
 #[test]
@@ -517,7 +508,9 @@ fn error_5_confirm_funded() {
     let s = setup();
     let a = actors(&s);
     let id = open_request(&s, &a, P190, 12, 1500);
-    force_status(&s, id, RequestStatus::Funded);
+    s.client.confirm_request(&id);
+    let funder = funded_user(&s, P190);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
     assert_eq!(err(s.client.try_confirm_request(&id)), Error::InvalidRequestStatus);
 }
 
@@ -545,14 +538,17 @@ fn cancel_confirmed_request() {
 
 #[test]
 fn error_5_cancel_after_funding_fails() {
-    // The status is forced to Funded here; Step 4 repeats this through the real fund_request.
+    // Goes through the real fund_request (Step 4); no forced storage.
     let s = setup();
     let a = actors(&s);
     let id = open_request(&s, &a, P190, 12, 1500);
     s.client.confirm_request(&id);
-    force_status(&s, id, RequestStatus::Funded);
+    let funder = funded_user(&s, P190);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Funded);
     assert_eq!(err(s.client.try_cancel_request(&id)), Error::InvalidRequestStatus);
     assert_eq!(s.client.get_request(&id).status, RequestStatus::Funded);
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Active);
 }
 
 #[test]
@@ -619,4 +615,320 @@ fn request_payoff_by_wrong_signer_fails() {
         )
         .is_err());
     assert_eq!(s.client.request_count(), 0);
+}
+
+// ---- funding (Step 4) ----
+
+fn token_client<'a>(s: &'a Setup) -> TokenClient<'a> {
+    TokenClient::new(&s.env, &s.token)
+}
+
+/// New address holding `amount` test tokens. Needs mock_all_auths (call `actors(&s)` first).
+pub(crate) fn funded_user(s: &Setup, amount: i128) -> Address {
+    let user = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.token).mint(&user, &amount);
+    user
+}
+
+/// Open request that the creditor has confirmed.
+pub(crate) fn confirmed_request(s: &Setup, a: &Actors, principal: i128, share: u32) -> u32 {
+    let id = open_request(s, a, principal, 12, share);
+    s.client.confirm_request(&id);
+    id
+}
+
+fn try_fund(s: &Setup, funder: &Address, id: u32, mode: Mode, fee: u32) -> Error {
+    err(s.client.try_fund_request(funder, &id, &mode, &fee))
+}
+
+// v2 golden: Loan fee. legal 1_900_000_000, fee_bps 300 -> outstanding 1_957_000_000.
+#[test]
+fn golden_loan_fee_outstanding() {
+    let s = setup();
+    let a = actors(&s);
+    s.env.ledger().set_timestamp(2_000);
+    let id = confirmed_request(&s, &a, 1_900_000_000, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    s.env.ledger().set_timestamp(3_000);
+
+    let loan_id = s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    assert_eq!(loan_id, id);
+    assert_eq!(
+        s.client.get_loan(&loan_id),
+        Loan {
+            id: 1,
+            worker: a.worker.clone(),
+            family: a.family.clone(),
+            funder: funder.clone(),
+            creditor: a.creditor.clone(),
+            mode: Mode::Loan,
+            legal_amount: 1_900_000_000,
+            fee_bps: 300,
+            outstanding: 1_957_000_000,
+            share_bps: 1500,
+            min_share_bps: 1500,
+            doc_hash: BytesN::from_array(&s.env, &HASH),
+            funded_at: 3_000,
+            last_payment_at: 3_000,
+            total_repaid: 0,
+            total_to_family: 0,
+            remit_count: 0,
+            status: LoanStatus::Active,
+        }
+    );
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Funded);
+}
+
+#[test]
+fn fund_request_pays_creditor_the_legal_amount() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, 1_900_000_000, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    assert_eq!(token_client(&s).balance(&a.creditor), 1_900_000_000);
+    assert_eq!(token_client(&s).balance(&funder), 10_000_000_000 - 1_900_000_000);
+}
+
+// v2 golden: Grant. 650_000_000, fee 0 -> legal 650_000_000, outstanding 0, Repaid.
+#[test]
+fn golden_grant_is_repaid_with_zero_outstanding() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, 650_000_000, 1500);
+    let employer = funded_user(&s, 10_000_000_000);
+    s.client.fund_request(&employer, &id, &Mode::Grant, &0);
+
+    let loan = s.client.get_loan(&id);
+    assert_eq!(loan.legal_amount, 650_000_000);
+    assert_eq!(loan.outstanding, 0);
+    assert_eq!(loan.status, LoanStatus::Repaid);
+    assert_eq!(loan.mode, Mode::Grant);
+    assert_eq!(loan.fee_bps, 0);
+    assert_eq!(token_client(&s).balance(&a.creditor), 650_000_000);
+    assert_eq!(token_client(&s).balance(&employer), 10_000_000_000 - 650_000_000);
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Funded);
+}
+
+#[test]
+fn loan_fee_boundaries_and_truncation() {
+    let s = setup();
+    let a = actors(&s);
+    let funder = funded_user(&s, 100_000_000_000);
+
+    // fee 0 is allowed in Loan mode: outstanding == legal_amount
+    let r0 = confirmed_request(&s, &a, 1_900_000_000, 1500);
+    s.client.fund_request(&funder, &r0, &Mode::Loan, &0);
+    assert_eq!(s.client.get_loan(&r0).outstanding, 1_900_000_000);
+
+    // fee 800 (max) allowed: 1_900_000_000 + 152_000_000
+    let r8 = confirmed_request(&s, &a, 1_900_000_000, 1500);
+    s.client.fund_request(&funder, &r8, &Mode::Loan, &800);
+    assert_eq!(s.client.get_loan(&r8).outstanding, 2_052_000_000);
+
+    // integer division truncates: 12_345 * 300 / 10_000 = 370 (not 370.35)
+    let rt = confirmed_request(&s, &a, 12_345, 1500);
+    s.client.fund_request(&funder, &rt, &Mode::Loan, &300);
+    assert_eq!(s.client.get_loan(&rt).outstanding, 12_345 + 370);
+}
+
+// Error 10
+#[test]
+fn error_10_invalid_fee() {
+    let s = setup();
+    let a = actors(&s);
+    let funder = funded_user(&s, 100_000_000_000);
+    let id = confirmed_request(&s, &a, P190, 1500);
+
+    assert_eq!(try_fund(&s, &funder, id, Mode::Loan, 801), Error::InvalidFee);
+    assert_eq!(try_fund(&s, &funder, id, Mode::Grant, 1), Error::InvalidFee);
+    assert_eq!(try_fund(&s, &funder, id, Mode::Grant, 300), Error::InvalidFee);
+
+    // nothing happened: still Confirmed, no loan, no money moved
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Confirmed);
+    assert_eq!(err(s.client.try_get_loan(&id)), Error::LoanNotFound);
+    assert_eq!(token_client(&s).balance(&a.creditor), 0);
+}
+
+// v2 golden: Fund unconfirmed. fund_request on an Open request -> Error 5.
+#[test]
+fn golden_error_5_fund_open_request() {
+    let s = setup();
+    let a = actors(&s);
+    let id = open_request(&s, &a, P190, 12, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    assert_eq!(try_fund(&s, &funder, id, Mode::Loan, 300), Error::InvalidRequestStatus);
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Open);
+    assert_eq!(err(s.client.try_get_loan(&id)), Error::LoanNotFound);
+    assert_eq!(token_client(&s).balance(&funder), 10_000_000_000);
+}
+
+#[test]
+fn error_5_fund_twice() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    assert_eq!(try_fund(&s, &funder, id, Mode::Loan, 300), Error::InvalidRequestStatus);
+    // second attempt moved nothing
+    assert_eq!(token_client(&s).balance(&a.creditor), P190);
+}
+
+#[test]
+fn error_5_fund_cancelled() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    s.client.cancel_request(&id);
+    let funder = funded_user(&s, 10_000_000_000);
+    assert_eq!(try_fund(&s, &funder, id, Mode::Loan, 300), Error::InvalidRequestStatus);
+}
+
+#[test]
+fn error_4_fund_missing_request() {
+    let s = setup();
+    let _a = actors(&s);
+    let funder = funded_user(&s, 10_000_000_000);
+    assert_eq!(try_fund(&s, &funder, 1, Mode::Loan, 300), Error::RequestNotFound);
+}
+
+// Error 6
+#[test]
+fn error_6_loan_not_found() {
+    let s = setup();
+    let a = actors(&s);
+    assert_eq!(err(s.client.try_get_loan(&1)), Error::LoanNotFound);
+    assert_eq!(err(s.client.try_get_loan(&0)), Error::LoanNotFound);
+    // a request that exists but is not funded has no loan
+    let id = confirmed_request(&s, &a, P190, 1500);
+    assert_eq!(err(s.client.try_get_loan(&id)), Error::LoanNotFound);
+}
+
+// Failed funding: funder balance below legal_amount -> reverts, no loan created.
+#[test]
+fn failed_funding_low_balance_reverts_and_creates_no_loan() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, P190 - 1); // one stroop short
+
+    let result = s.client.try_fund_request(&funder, &id, &Mode::Loan, &300);
+    assert!(result.is_err());
+
+    assert_eq!(err(s.client.try_get_loan(&id)), Error::LoanNotFound); // no loan
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Confirmed); // not Funded
+    assert_eq!(token_client(&s).balance(&funder), P190 - 1); // funder untouched
+    assert_eq!(token_client(&s).balance(&a.creditor), 0); // creditor unpaid
+    assert!(s.env.events().all().filter_by_contract(&s.contract_id).events().is_empty()); // no Payoff
+}
+
+#[test]
+fn failed_funding_with_zero_balance_creates_no_loan() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = Address::generate(&s.env); // holds nothing
+    assert!(s.client.try_fund_request(&funder, &id, &Mode::Loan, &300).is_err());
+    assert_eq!(err(s.client.try_get_loan(&id)), Error::LoanNotFound);
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Confirmed);
+}
+
+#[test]
+fn funding_succeeds_after_a_failed_attempt_once_topped_up() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, P190 - 1);
+    assert!(s.client.try_fund_request(&funder, &id, &Mode::Loan, &300).is_err());
+    StellarAssetClient::new(&s.env, &s.token).mint(&funder, &1);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300); // exactly legal_amount is enough
+    assert_eq!(s.client.get_loan(&id).outstanding, 1_957_000_000);
+    assert_eq!(token_client(&s).balance(&funder), 0);
+}
+
+#[test]
+fn fund_request_requires_funder_auth() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    assert_eq!(s.env.auths()[0].0, funder);
+}
+
+#[test]
+fn fund_by_wrong_signer_fails() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    let stranger = Address::generate(&s.env);
+    s.env.mock_auths(&[MockAuth {
+        address: &stranger,
+        invoke: &MockAuthInvoke {
+            contract: &s.contract_id,
+            fn_name: "fund_request",
+            args: (funder.clone(), id, Mode::Loan, 300u32).into_val(&s.env),
+            sub_invokes: &[],
+        },
+    }]);
+    assert!(s.client.try_fund_request(&funder, &id, &Mode::Loan, &300).is_err());
+    assert_eq!(s.client.get_request(&id).status, RequestStatus::Confirmed);
+    assert_eq!(token_client(&s).balance(&funder), 10_000_000_000);
+}
+
+#[test]
+fn fund_request_emits_payoff() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, 10_000_000_000);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    let expected = Payoff {
+        id,
+        funder: funder.clone(),
+        creditor: a.creditor.clone(),
+        amount: P190,
+        mode: Mode::Loan,
+    };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id),
+        std::vec![expected.to_xdr(&s.env, &s.contract_id)]
+    );
+}
+
+#[test]
+fn grant_emits_payoff_with_grant_mode() {
+    let s = setup();
+    let a = actors(&s);
+    let id = confirmed_request(&s, &a, 650_000_000, 1500);
+    let employer = funded_user(&s, 10_000_000_000);
+    s.client.fund_request(&employer, &id, &Mode::Grant, &0);
+    let expected = Payoff {
+        id,
+        funder: employer.clone(),
+        creditor: a.creditor.clone(),
+        amount: 650_000_000,
+        mode: Mode::Grant,
+    };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id),
+        std::vec![expected.to_xdr(&s.env, &s.contract_id)]
+    );
+}
+
+#[test]
+fn loan_id_equals_request_id_for_several_requests() {
+    let s = setup();
+    let a = actors(&s);
+    let funder = funded_user(&s, 100_000_000_000);
+    let r1 = confirmed_request(&s, &a, P190, 1500);
+    let r2 = confirmed_request(&s, &a, 650_000_000, 1000);
+    // fund out of order
+    assert_eq!(s.client.fund_request(&funder, &r2, &Mode::Loan, &300), r2);
+    assert_eq!(s.client.fund_request(&funder, &r1, &Mode::Loan, &300), r1);
+    assert_eq!(s.client.get_loan(&r2).share_bps, 1000);
+    assert_eq!(s.client.get_loan(&r2).min_share_bps, 1000);
+    assert_eq!(s.client.get_loan(&r1).share_bps, 1500);
 }
