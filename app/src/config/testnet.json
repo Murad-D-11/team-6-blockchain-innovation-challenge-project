@@ -3,7 +3,7 @@
   "rpcUrl": "https://soroban-testnet.stellar.org",
   "horizonUrl": "https://horizon-testnet.stellar.org",
   "networkPassphrase": "Test SDF Network ; September 2015",
-  "contractId": "CCOTYR3TCNXTWV67KPYWZSQDWOIFP6UFSVC37WXOKUWECNQ6RJVJ7TN2",
+  "contractId": "CCQ2LMIEGRCWT5YV4DPCR2VGNP76DVYVPD5KJMCFJILZ7FMX37LL4KS3",
   "tokenContractId": "CAWWECWMEOJJE25IYYSDIOYTWCOW2R7S5NDGQISERK2U7GKI2UZYPEIW",
   "asset": {
     "code": "USDC",
@@ -22,5 +22,5 @@
     "employer": "GAOGMIK6QABJFEUZL5BQGAYZBLPTB2GALMFJUFYZ4EA6GHSVVV57K3UX"
   },
   "explorerTxUrl": "https://stellar.expert/explorer/testnet/tx/",
-  "deployedAt": "placeholder"
+  "deployedAt": "2026-11-05T21:27:50.793Z"
 }
