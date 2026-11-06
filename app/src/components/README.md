@@ -13,7 +13,7 @@ Import from `@/components/...`. Luke: use these on your pages; ask Ananya for ch
 | `useTx` | `const tx = useTx<TxResult>(); await tx.run(() => laya.confirmRequest(id))` gives `busy`, `error` (friendly LayaError text), `result` |
 | `errors.ts` | `errorText(e)` friendly text for any thrown error |
 | `hooks.ts` | `usePoll(fn, ms)` refresh every few seconds; `useMounted()` |
-| `placeholderData.ts` | PROVIDERS, RULES, PEOPLE until Luke's `app/src/data/*.json` lands (then swapped in one place) |
+| `demoData.ts` | Typed `PROVIDERS`, `RULES`, `PEOPLE` from Luke's `app/src/data/*.json`, plus `providerName`, `payerName`, `firstName`, `SAMPLE_INVOICES` |
 | `ui/*` | shadcn-style `Button`, `Card*`, `Input`, `Select`, `Slider`, `Label`, `Badge`, `Tabs*`, `Table*` |
 
 The `ui/*` files are hand-written in shadcn style (same names and props) so that no new npm packages are needed.
