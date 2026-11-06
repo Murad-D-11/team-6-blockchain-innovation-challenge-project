@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { usePoll } from "@/components/hooks";
 import { PageShell } from "@/components/PageShell";
-import { PROVIDERS, providerName, RULES } from "@/components/placeholderData";
+import { PROVIDERS, providerName, RULES, SAMPLE_INVOICES } from "@/components/demoData";
 import { RoleGuard } from "@/components/RoleGuard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TxLink } from "@/components/TxLink";
@@ -338,6 +338,11 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
                     ? <>Fingerprint <span className="font-mono">{row.docHash.slice(0, 12)}…</span> · the file never leaves your phone</>
                     : "Only a fingerprint (SHA-256) is stored. The file never leaves your phone."}
                 </p>
+                {!row.docHash && SAMPLE_INVOICES[row.billType] && (
+                  <a href={SAMPLE_INVOICES[row.billType]} download className="text-xs text-blue-600 underline">
+                    Download the fictional sample invoice
+                  </a>
+                )}
               </div>
             )}
           </>
