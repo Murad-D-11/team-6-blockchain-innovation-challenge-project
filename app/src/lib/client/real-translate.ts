@@ -122,19 +122,39 @@ export function remitResultFromContract(c: ContractRemitResult, txHash: string):
 }
 
 export const TOKEN_FAILURE_MESSAGE =
-  "The USDC transfer failed. Check that the paying account has enough USDC and a USDC trustline.";
+  "Not enough USDC in this account, or the account has no USDC trustline. Check the balance and try again.";
+
+/**
+ * The contract that first raised the error, read from the host's "Event log (newest first)". Each
+ * line looks like `2: [Failed Diagnostic Event (not emitted)] contract:C..., topics:[error, Error(Contract, #10)]`.
+ * The origin is the oldest event (highest index) that carries an error. Null when there is no log.
+ */
+export function errorOriginContract(text: string): string | null {
+  const re = /^\s*(\d+): \[[^\]]*\] contract:(C[A-Z0-9]+), topics:\[error, Error\(/gm;
+  let best: { n: number; id: string } | null = null;
+  for (const m of text.matchAll(re)) {
+    const n = Number(m[1]);
+    if (!best || n > best.n) best = { n, id: m[2] };
+  }
+  return best ? best.id : null;
+}
 
 /**
  * Any thrown failure to a LayaError. A LayaError (for example the wallet's "Signing was rejected")
- * passes through. `Error(Contract, #n)` with n in 1-11 becomes that code, unless the text names the
- * token contract: its own error numbers (such as 10, insufficient balance) overlap ours. Everything
+ * passes through. `Error(Contract, #n)` with n in 1-11 becomes that code, unless the token contract
+ * raised it (see errorOriginContract): its own error numbers (such as 10, insufficient balance) overlap ours. Everything
  * else (network, wallet, simulation crash) is code 0.
  */
 export function layaErrorFromUnknown(e: unknown, tokenContractId?: string): LayaError {
   if (e instanceof LayaError) return e;
   const text = e instanceof Error ? e.message : typeof e === "string" ? e : "";
-  if (tokenContractId && text.includes(tokenContractId) && /Error\(Contract, #\d+\)/.test(text)) {
-    return new LayaError(0, TOKEN_FAILURE_MESSAGE);
+  if (tokenContractId && /Error\(Contract, #\d+\)/.test(text)) {
+    const origin = errorOriginContract(text);
+    // With an event log, the contract that raised the error decides (a laya error can mention the
+    // token in its log). Without one, fall back to "the text names the token".
+    if (origin ? origin === tokenContractId : text.includes(tokenContractId)) {
+      return new LayaError(0, TOKEN_FAILURE_MESSAGE);
+    }
   }
   return parseContractError(e);
 }

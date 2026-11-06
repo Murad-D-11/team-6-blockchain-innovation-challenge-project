@@ -171,6 +171,38 @@ describe("layaErrorFromUnknown", () => {
     const e = new Error(`HostError: Error(Contract, #10) contract:${TOKEN} balance is not sufficient`);
     expect(layaErrorFromUnknown(e, TOKEN)).toMatchObject({ code: 0, message: TOKEN_FAILURE_MESSAGE });
   });
+  // Exact simulation error from a funder with too little USDC (public testnet addresses only).
+  const LAYA = "CCQ2LMIEGRCWT5YV4DPCR2VGNP76DVYVPD5KJMCFJILZ7FMX37LL4KS3";
+  const RAW_LOW_BALANCE = [
+    "HostError: Error(Contract, #10)",
+    "",
+    "Event log (newest first):",
+    `   0: [Diagnostic Event] contract:${LAYA}, topics:[error, Error(Contract, #10)], data:"escalating error to VM trap from failed host function call: call"`,
+    `   1: [Diagnostic Event] contract:${LAYA}, topics:[error, Error(Contract, #10)], data:["contract call failed", transfer, [${L}, ${C}, 50000000000000]]`,
+    `   2: [Failed Diagnostic Event (not emitted)] contract:${TOKEN}, topics:[error, Error(Contract, #10)], data:["resulting balance is not within the allowed range", 0, -49901300000000, 9223372036854775807]`,
+    `   3: [Diagnostic Event] contract:${LAYA}, topics:[fn_call, ${TOKEN}, transfer], data:[${L}, ${C}, 50000000000000]`,
+    `   4: [Diagnostic Event] topics:[fn_call, ${LAYA}, fund_request], data:[${L}, 6, 0, 300]`,
+    "",
+  ].join("\n");
+  it("a token transfer failing with the same number 10 is not InvalidFee", () => {
+    const r = layaErrorFromUnknown(new Error(RAW_LOW_BALANCE), TOKEN);
+    expect(r.code).toBe(0);
+    expect(r.message).toBe(
+      "Not enough USDC in this account, or the account has no USDC trustline. Check the balance and try again.",
+    );
+  });
+  it("an error raised by the laya contract (code 10) is still InvalidFee, even if the log mentions the token", () => {
+    const raw = [
+      "HostError: Error(Contract, #10)",
+      "",
+      "Event log (newest first):",
+      `   0: [Diagnostic Event] contract:${LAYA}, topics:[error, Error(Contract, #10)], data:"escalating error to VM trap from failed host function call: call"`,
+      `   1: [Diagnostic Event] contract:${LAYA}, topics:[fn_call, ${TOKEN}, transfer], data:[]`,
+      `   2: [Diagnostic Event] topics:[fn_call, ${LAYA}, fund_request], data:[${L}, 6, 0, 900]`,
+      "",
+    ].join("\n");
+    expect(layaErrorFromUnknown(new Error(raw), TOKEN)).toMatchObject({ code: 10, message: ERROR_MESSAGES[10] });
+  });
   it("network and other failures are code 0 with the friendly text", () => {
     expect(layaErrorFromUnknown(new Error("fetch failed"))).toMatchObject({ code: 0, message: ERROR_MESSAGES[0] });
     expect(layaErrorFromUnknown("boom")).toMatchObject({ code: 0 });

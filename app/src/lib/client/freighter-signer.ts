@@ -1,4 +1,5 @@
 import { signTransaction } from "@stellar/freighter-api";
+import { WALLET_PROBLEM } from "../errors";
 import { LayaError } from "../types";
 import { connectFreighter } from "./wallet";
 import type { Signer } from "./signer";
@@ -17,11 +18,13 @@ export class FreighterSigner implements Signer {
       r = await signTransaction(xdr, { networkPassphrase: opts.networkPassphrase });
     } catch (e) {
       if (e instanceof LayaError) throw e;
-      throw new LayaError(0, `Freighter error: ${e instanceof Error ? e.message : String(e)}`);
+      console.error("Freighter error:", e);
+      throw new LayaError(0, WALLET_PROBLEM);
     }
     if (r.error) {
       const rejected = /declin|reject|den(y|ied)|cancel/i.test(r.error.message ?? "");
-      throw new LayaError(0, rejected ? REJECTED : `Freighter error: ${r.error.message}`);
+      if (!rejected) console.error("Freighter error:", r.error);
+      throw new LayaError(0, rejected ? REJECTED : WALLET_PROBLEM);
     }
     return r.signedTxXdr;
   }

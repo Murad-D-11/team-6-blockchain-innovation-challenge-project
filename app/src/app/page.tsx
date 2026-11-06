@@ -1,34 +1,66 @@
 import Link from "next/link";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const links: { href: string; label: string; step: string }[] = [
-  { href: "/worker/request?role=worker", label: "Worker: request payoff", step: "1" },
-  { href: "/creditor?role=creditor", label: "Creditor: accept settlement", step: "2" },
-  { href: "/funder?role=funder", label: "Funder: fund a request", step: "3, 8" },
-  { href: "/proof/1", label: "Proof page for loan 1 (public)", step: "4" },
-  { href: "/worker?role=worker", label: "Worker: dashboard and send home", step: "5, 6" },
-  { href: "/family?role=family", label: "Family: balance", step: "7" },
-  { href: "/admin?role=admin", label: "Admin: creditors and period", step: "" },
-  { href: "/dev", label: "Dev: run the golden flow on the mock", step: "" },
+type DemoLink = { label: string; note: string; href?: string };
+
+// Demo script order (docs/PLAN-v2.md). Items without an href render as plain text with "coming soon".
+// When /worker or /family exist, add their href here to turn them into links.
+const demo: DemoLink[] = [
+  { label: "Worker", note: "List the bills; the placement fee is refused", href: "/worker/request?role=worker" },
+  { label: "Provider: training center", note: "Confirm the 190 USDC invoice", href: "/creditor?role=creditor" },
+  { label: "Provider: clinic", note: "Confirm the 65 USDC invoice", href: "/creditor?role=clinic" },
+  { label: "Funder (Loan)", note: "Fund the training bill at a flat fee", href: "/funder?role=funder" },
+  { label: "Employer (Grant)", note: "Pay the medical exam; the worker owes 0", href: "/funder?role=employer" },
+  { label: "Receipt 1", note: "Public proof for the first request", href: "/proof/1" },
+  { label: "Receipt 2", note: "Public proof for the second request", href: "/proof/2" },
+  { label: "Worker dashboard", note: "Send money home and see the repayment", },
+  { label: "Family", note: "Lorna's balance goes up" },
+  { label: "Admin", note: "Rulebook and verified providers", href: "/admin?role=admin" },
+  { label: "Dev", note: "Run the whole flow on the mock", href: "/dev" },
 ];
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <h1 className="text-2xl font-bold">Laya (testnet)</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Demo pages. The role in the link sets the mock account; add{" "}
-        <code>?mockReset=1</code> to wipe the mock state.
+    <main className="mx-auto max-w-xl space-y-6 p-6">
+      <header className="space-y-2">
+        <h1 className="text-3xl font-bold">Laya</h1>
+        <p>
+          Laya sorts a migrant worker&apos;s pre-departure bills by a published rulebook and sends each one to
+          whoever legally owes it. It then pays the provider directly, so the worker owes only the principal.
+        </p>
+        <p role="note" className="rounded-md border border-border bg-muted p-3 text-sm">
+          Stellar testnet demo with fictional people and test tokens.
+        </p>
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Demo, in script order</CardTitle>
+          <CardDescription>The role in each link picks the account to act as.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-3">
+            {demo.map((d) => (
+              <li key={d.label}>
+                {d.href ? (
+                  <Link href={d.href} className="font-medium text-blue-600 underline">
+                    {d.label}
+                  </Link>
+                ) : (
+                  <span className="font-medium">
+                    {d.label} <span className="text-sm font-normal text-muted-foreground">(coming soon)</span>
+                  </span>
+                )}
+                <span className="block text-sm text-muted-foreground">{d.note}</span>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground">
+        Dev note: add <code>?mockReset=1</code> to any URL to wipe the mock&apos;s saved state.
       </p>
-      <ul className="mt-6 space-y-2">
-        {links.map((l) => (
-          <li key={l.href}>
-            <Link href={l.href} className="text-blue-600 underline">
-              {l.label}
-            </Link>
-            {l.step && <span className="ml-2 text-xs text-gray-500">demo step {l.step}</span>}
-          </li>
-        ))}
-      </ul>
     </main>
   );
 }

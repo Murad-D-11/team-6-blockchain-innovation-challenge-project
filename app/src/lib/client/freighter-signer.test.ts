@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { WALLET_PROBLEM } from "../errors";
 import { FreighterSigner } from "./freighter-signer";
 
 vi.mock("@stellar/freighter-api", () => ({
@@ -30,19 +31,25 @@ describe("FreighterSigner.signTransaction", () => {
     });
   });
 
-  it("maps other wallet errors to LayaError(0)", async () => {
+  it("maps other wallet errors to the plain message and logs the original", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     sign.mockResolvedValue({ error: { code: -1, message: "boom" } } as never);
     await expect(new FreighterSigner().signTransaction("XDR", opts)).rejects.toMatchObject({
       code: 0,
-      message: "Freighter error: boom",
+      message: WALLET_PROBLEM,
     });
+    expect(log).toHaveBeenCalledWith("Freighter error:", { code: -1, message: "boom" });
+    log.mockRestore();
   });
 
-  it("maps a thrown error (e.g. extension gone) to LayaError(0)", async () => {
-    sign.mockRejectedValue(new Error("network down"));
-    await expect(new FreighterSigner().signTransaction("XDR", opts)).rejects.toMatchObject({
-      code: 0,
-      message: "Freighter error: network down",
-    });
+  it("maps a thrown error (e.g. extension gone) to the plain message and logs the original", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const err = new Error("network down");
+    sign.mockRejectedValue(err);
+    const rejection = await new FreighterSigner().signTransaction("XDR", opts).catch((e) => e);
+    expect(rejection).toMatchObject({ code: 0, message: WALLET_PROBLEM });
+    expect(rejection.message).not.toContain("network down");
+    expect(log).toHaveBeenCalledWith("Freighter error:", err);
+    log.mockRestore();
   });
 });

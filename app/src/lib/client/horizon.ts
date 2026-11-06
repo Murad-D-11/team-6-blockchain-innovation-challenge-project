@@ -1,4 +1,5 @@
 import { config } from "../config";
+import { NETWORK_PROBLEM } from "../errors";
 import { LayaError } from "../types";
 import { toUnits } from "../units";
 
@@ -18,7 +19,10 @@ async function loadBalances(address: string): Promise<HorizonBalance[] | null> {
     throw new LayaError(0, "Could not reach the Stellar network. Check your connection.");
   }
   if (res.status === 404) return null;
-  if (!res.ok) throw new LayaError(0, `Stellar network error (${res.status})`);
+  if (!res.ok) {
+    console.error(`Horizon returned HTTP ${res.status} for ${address}`);
+    throw new LayaError(0, NETWORK_PROBLEM);
+  }
   const body = (await res.json()) as { balances?: HorizonBalance[] };
   return Array.isArray(body.balances) ? body.balances : [];
 }
