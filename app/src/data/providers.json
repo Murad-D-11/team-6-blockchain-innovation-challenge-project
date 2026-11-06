@@ -1,0 +1,5 @@
+[
+  {"address":"GDUNEIGUPTDLOXG7GPZHYDJL65IWGHJX6BXIXPWOI3T6LYRZJSCOJBQL","name":"Pasig Skills Training Center","kind":"training_center","verified":true,"regNo":"TC-0000 (fictional)","fictional":true},
+  {"address":"GAFMXYKCO4NU37W574VIBIIW4YGMOKH5ASS26ZEBTUU5QHM33HTGX4OX","name":"Bayside Medical Clinic","kind":"clinic","verified":true,"regNo":"MC-0000 (fictional)","fictional":true},
+  {"address":null,"name":"Golden Gate Recruitment Agency","kind":"agency","verified":true,"regNo":"EA-0000 (fictional)","fictional":true}
+]
