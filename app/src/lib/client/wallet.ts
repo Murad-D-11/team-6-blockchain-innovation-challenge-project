@@ -1,7 +1,14 @@
 import { getAddress, getNetwork, isConnected, requestAccess } from "@stellar/freighter-api";
 import { config } from "../config";
 import { isValidAccount } from "../address";
+import { WALLET_PROBLEM } from "../errors";
 import { LayaError } from "../types";
+
+/** Logs the original Freighter error for debugging and returns the plain message for the user. */
+function walletProblem(e: { message?: string }): LayaError {
+  console.error("Freighter error:", e);
+  return new LayaError(0, WALLET_PROBLEM);
+}
 
 const NOT_INSTALLED = "Freighter wallet not found. Install the Freighter extension and reload.";
 const REJECTED = "Connection request was rejected in Freighter";
@@ -25,16 +32,16 @@ export async function connectFreighter(): Promise<string> {
 
   const access = await requestAccess();
   if (access.error) {
-    throw new LayaError(0, isRejection(access.error) ? REJECTED : `Freighter error: ${access.error.message}`);
+    throw isRejection(access.error) ? new LayaError(0, REJECTED) : walletProblem(access.error);
   }
 
   const net = await getNetwork();
-  if (net.error) throw new LayaError(0, `Freighter error: ${net.error.message}`);
+  if (net.error) throw walletProblem(net.error);
   if (net.networkPassphrase !== config.networkPassphrase) throw new LayaError(0, WRONG_NETWORK);
 
   const addr = await getAddress();
   if (addr.error) {
-    throw new LayaError(0, isRejection(addr.error) ? REJECTED : `Freighter error: ${addr.error.message}`);
+    throw isRejection(addr.error) ? new LayaError(0, REJECTED) : walletProblem(addr.error);
   }
   if (!isValidAccount(addr.address)) throw new LayaError(0, "Freighter returned an invalid address");
   return addr.address;
