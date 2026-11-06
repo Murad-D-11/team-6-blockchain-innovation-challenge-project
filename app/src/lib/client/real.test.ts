@@ -23,13 +23,22 @@ function mockFetch(status: number, body: unknown) {
 
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
-describe("RealLayaClient stub methods", () => {
-  it("still throw LayaError(0) for unimplemented methods", async () => {
+describe("RealLayaClient without the network", () => {
+  it("getEvents returns [] for now", async () => {
     const c = new RealLayaClient();
     expect(c.address()).toBeNull();
-    for (const call of [() => c.getConfig(), () => c.remit({ loanId: 1, amount: 1n })]) {
-      await expect(call()).rejects.toMatchObject({ code: 0, message: "Real client not ready yet" });
-    }
+    expect(await c.getEvents()).toEqual([]);
+  });
+  it("rejects a malformed address as LayaError(0) before any network call", async () => {
+    const f = vi.fn();
+    vi.stubGlobal("fetch", f);
+    const signer = { address: vi.fn().mockResolvedValue(ADDR), signTransaction: vi.fn() };
+    const c = new RealLayaClient({ signer });
+    await expect(c.isCreditor("not-an-address")).rejects.toMatchObject({ code: 0 });
+    await expect(c.addCreditor("G123")).rejects.toMatchObject({ code: 0 });
+    await expect(c.requestPayoff({ family: "x", creditor: ADDR, principal: 1n, months: 1, shareBps: 1500, docHash: "a".repeat(64) })).rejects.toMatchObject({ code: 0 });
+    expect(f).not.toHaveBeenCalled();
+    expect(signer.signTransaction).not.toHaveBeenCalled();
   });
 });
 

@@ -2,7 +2,8 @@
  * Golden-flow smoke test (PLAN-v2). Runs through the LayaClient interface only.
  *
  *   npm run smoke:mock
- *   npm run smoke:real     (reads LAYA_SECRET_* from .env.local; the real client is not ready yet)
+ *   npm run smoke:real            (full golden flow on testnet; reads LAYA_SECRET_* from .env.local)
+ *   npm run smoke:real -- --reads (read-only checks on testnet; needs no keys)
  *
  * `actAs(role)` returns the client that acts as that account. The mock returns one shared client
  * switched to the role; the real backend returns one RealLayaClient per role, each with its own
@@ -94,6 +95,44 @@ export async function runGoldenFlow(actAs: ActAs): Promise<number> {
   return failures;
 }
 
+/** Read-only checks against the deployed contract. Needs no keys: nothing is signed or sent. */
+export async function runReads(client: LayaClient): Promise<number> {
+  failures = 0;
+  const a = config.accounts;
+
+  console.log("\nContract " + config.contractId);
+  console.log("getConfig");
+  const cfg = await client.getConfig();
+  console.log("  found", JSON.stringify(cfg));
+  check("periodSecs", cfg.periodSecs, config.periodSecs);
+  check("maxPausePeriods", cfg.maxPausePeriods, config.maxPausePeriods);
+  check("admin", cfg.admin, a.admin);
+  check("token", cfg.token, config.tokenContractId);
+
+  console.log("isCreditor");
+  check("creditor", await client.isCreditor(a.creditor), true);
+  check("clinic", await client.isCreditor(a.clinic), true);
+  check("worker", await client.isCreditor(a.worker), false);
+
+  console.log("listRequests");
+  const requests = await client.listRequests();
+  check("is an array", Array.isArray(requests), true);
+  console.log(`  found ${requests.length} request(s) on chain`);
+  for (const r of requests.slice(0, 3)) {
+    console.log(`  #${r.id} ${r.status}, legalAmount ${r.legalAmount}, creditor ${r.creditor.slice(0, 6)}…`);
+  }
+
+  console.log("listLoans");
+  const loans = await client.listLoans();
+  console.log(`  found ${loans.length} loan(s)`);
+  for (const l of loans.slice(0, 3)) {
+    console.log(`  #${l.id} ${l.mode} ${l.status}, outstanding ${l.outstanding}, missedPeriods ${l.missedPeriods}, overdue ${l.isOverdue}`);
+  }
+
+  console.log(failures === 0 ? "\nREADS PASSED" : `\nREADS FAILED (${failures} check${failures === 1 ? "" : "s"})`);
+  return failures;
+}
+
 const ROLES: AccountRole[] = ["worker", "funder", "creditor", "clinic", "employer", "admin"];
 
 /** One RealLayaClient per role, each signing with that role's secret. Aborts on any key/address mismatch. */
@@ -127,6 +166,19 @@ function realActAs(): ActAs {
 
 async function main(): Promise<void> {
   const backend = process.argv[2] ?? "mock";
+  if (process.argv.includes("--reads")) {
+    if (backend !== "real") {
+      console.error("--reads only applies to the real backend: npm run smoke:real -- --reads");
+      process.exit(2);
+    }
+    // No keys: a signer that refuses, so any accidental write fails loudly.
+    const noKeys = {
+      address: async (): Promise<string> => { throw new Error("--reads has no signer"); },
+      signTransaction: async (): Promise<string> => { throw new Error("--reads has no signer"); },
+    };
+    const failed = await runReads(new RealLayaClient({ signer: noKeys }));
+    process.exit(failed === 0 ? 0 : 1);
+  }
   let actAs: ActAs;
   if (backend === "mock") {
     const mock = new MockLayaClient({ delayMs: 0, storage: null, sessionStorage: null, search: () => "" });
