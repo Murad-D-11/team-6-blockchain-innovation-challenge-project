@@ -103,6 +103,10 @@ export class RealLayaClient implements LayaClient {
     try {
       const who = this.addr ?? (await this.connect());
       const tx = await call(this.contract(who), who);
+      // The bindings turn a trapped simulation (e.g. the token's failed transfer) into an Err with an
+      // empty message, which loses which contract failed. The raw simulation text keeps it.
+      const sim = tx.simulation as { error?: unknown } | undefined;
+      if (sim && typeof sim.error === "string") throw new Error(sim.error);
       unwrap(tx.result); // simulation Err: throws here, the wallet is never asked
       const sent = await tx.signAndSend();
       const value = unwrap(sent.result);

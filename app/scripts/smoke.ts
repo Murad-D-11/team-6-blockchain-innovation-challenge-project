@@ -136,7 +136,7 @@ export async function runReads(client: LayaClient): Promise<number> {
 const ROLES: AccountRole[] = ["worker", "funder", "creditor", "clinic", "employer", "admin"];
 
 /** One RealLayaClient per role, each signing with that role's secret. Aborts on any key/address mismatch. */
-function realActAs(): ActAs {
+export function realActAs(): ActAs {
   try {
     process.loadEnvFile(".env.local");
   } catch {
