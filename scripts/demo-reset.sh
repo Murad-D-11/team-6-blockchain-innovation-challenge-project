@@ -7,7 +7,8 @@
 #   4. tops each up to its target (worker 2,000 / funder 10,000 / employer 10,000 USDC) by paying ONLY the
 #      shortfall from laya-issuer. An account at or above target is left alone (money is never taken back)
 #   5. calls set_period(60, 3) as laya-admin
-#   6. prints balances before and after, and the contract config after
+#   6. extends the USDC token contract instance TTL to 518,400 ledgers, only if fewer than 120,960 remain
+#   7. prints balances before and after, and the contract config after
 #
 # It cannot erase requests or loans already on the contract (the contract has no delete). Demos must
 # create fresh requests live, because old loans show many missed periods once a "month" is 60 seconds.
@@ -214,6 +215,44 @@ set_period() {
 echo
 say "set_period($PERIOD_SECS, $MAX_PAUSE_PERIODS) as $ADMIN_ID..."
 retry set_period || die "set_period failed (usually transient: re-run the script)"
+
+# 6b. keep the USDC token contract instance alive ----------------------------------------------------------
+# The token's instance entry has its own TTL (the contract's own storage is extended by the contract itself).
+# Extended only when fewer than TTL_THRESHOLD ledgers remain, so a repeat run submits nothing.
+# G-account USDC balances are classic trustline entries (no TTL), so only this instance needs it.
+TTL_THRESHOLD=120960
+TTL_EXTEND_TO=518400
+LIVE=""; LATEST=""
+read_token_ttl() {  # sets LIVE (live-until ledger) and LATEST (current ledger); read-only RPC lookup
+  local out
+  out="$(run_capture stellar ledger entry fetch contract-data --contract "$TOKEN" --instance \
+    --network "$NETWORK" --output json)" || return 1
+  out="$(printf '%s' "$out" | node -e '
+    const j = JSON.parse(require("fs").readFileSync(0, "utf8"));
+    const e = j.entries && j.entries[0];
+    if (!e || !Number.isInteger(e.liveUntilLedgerSeq) || !Number.isInteger(j.latestLedger)) process.exit(1);
+    console.log(e.liveUntilLedgerSeq + " " + j.latestLedger);
+  ' | tr -d '\r')" || { echo "[reset] could not parse the token instance entry" >&2; return 1; }
+  LIVE="${out% *}"; LATEST="${out#* }"
+}
+ttl_line() { echo "expires at ledger $LIVE, $((LIVE - LATEST)) ledgers left (about $(( (LIVE - LATEST) * 5 / 86400 )) days)"; }
+extend_token() {
+  run_capture stellar contract extend --id "$TOKEN" --durability persistent \
+    --ledgers-to-extend "$TTL_EXTEND_TO" --ttl-ledger-only \
+    --source-account "$ADMIN_ID" --network "$NETWORK" >/dev/null
+}
+echo
+retry read_token_ttl || die "could not read the token instance TTL"
+say "token instance TTL BEFORE: $(ttl_line)"
+if [ $((LIVE - LATEST)) -lt "$TTL_THRESHOLD" ]; then
+  say "below the $TTL_THRESHOLD-ledger threshold: extending to $TTL_EXTEND_TO ledgers (as $ADMIN_ID)..."
+  retry extend_token || die "token instance extend failed (usually transient: re-run the script)"
+  retry read_token_ttl || die "could not re-read the token instance TTL"
+  [ $((LIVE - LATEST)) -ge "$TTL_THRESHOLD" ] || die "token instance TTL is still below the threshold after extending"
+  say "token instance TTL AFTER:  $(ttl_line)"
+else
+  say "token instance TTL AFTER:  unchanged, nothing to extend"
+fi
 
 # 7. balances and config after --------------------------------------------------------------------------
 get_balance "$WORKER";   W_AFTER="$BAL"
