@@ -1,21 +1,160 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AmountDisplay } from "@/components/AmountDisplay";
+import { errorText } from "@/components/errors";
+import { PageShell } from "@/components/PageShell";
+import { RoleGuard } from "@/components/RoleGuard";
+import { loanDisplayStatus, StatusBadge } from "@/components/StatusBadge";
+import { TxStatus } from "@/components/TxStatus";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTx } from "@/components/useTx";
 import { useLaya } from "@/lib/hooks/useLaya";
 import { useWallet } from "@/lib/hooks/useWallet";
-import type { Loan, PayoffRequest } from "@/lib/types";
+import { LayaError } from "@/lib/types";
+import type { Loan, PayoffRequest, TxResult } from "@/lib/types";
 import config from "@/lib/config";
 import people from "@/data/people.json";
-import { amount, button, card, classify, provider, Verify } from "@/data/ui";
+import { classify, provider, Verify } from "@/data/ui";
+
+type FunderRole = "funder" | "employer";
 
 export default function FunderPage() {
- const client=useLaya(); const {address,role}=useWallet(); const [requests,setRequests]=useState<PayoffRequest[]>([]); const [loans,setLoans]=useState<Loan[]>([]); const [fee,setFee]=useState("3"); const [busy,setBusy]=useState(false); const [message,setMessage]=useState(""); const [tx,setTx]=useState(""); const [tab,setTab]=useState<"requests"|"portfolio">("requests"); const [maxPause,setMaxPause]=useState(3);
- const refresh=useCallback(async()=>{try { const [r,l,cfg]=await Promise.all([client.listRequests(),client.listLoans(),client.getConfig()]); setRequests(r);setLoans(l);setMaxPause(cfg.maxPausePeriods); } catch(e) {setMessage((e as Error).message);} },[client]);
- useEffect(()=>{void Promise.resolve().then(refresh); const timer = window.setInterval(()=>void refresh(), 15000); return ()=>window.clearInterval(timer);},[refresh,address]);
- const feeParts = /^(\d+)(?:\.(\d{1,2}))?$/.exec(fee.trim());
- const feeBps = feeParts ? Number(feeParts[1]) * 100 + Number((feeParts[2] ?? "").padEnd(2,"0")) : NaN;
- async function fund(id:number) {setBusy(true);setMessage("");setTx("");try {if(role === "funder" && (!Number.isSafeInteger(feeBps) || feeBps<0 || feeBps>800)) throw new Error("Enter a fee from 0 to 8%, with at most two decimal places."); if(role!=="funder" && role!=="employer") throw new Error("Switch to the funder or employer account."); const r=await client.fundRequest({requestId:id,mode:role==="employer"?"Grant":"Loan",feeBps:role==="employer"?0:feeBps});setTx(r.txHash);await refresh();}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}}
- const eligible=requests.filter(r=>r.status==="Confirmed" && ((role==="funder" && classify(r).payer==="worker") || (role==="employer" && classify(r).payer==="employer")));
- return <main className="mx-auto max-w-3xl space-y-5 p-6"><h1 className="text-3xl font-bold">Funding</h1><p>Testnet · {address ?? "No wallet connected"}</p><button className={button} onClick={()=>void client.connect().catch(e=>setMessage(e.message))}>{address ? "Reconnect / switch wallet" : "Connect wallet"}</button>{role!=="funder" && role!=="employer" && <p>Switch to the funder or employer account.</p>}{message && <p role="alert">{message}</p>}{tx && (process.env.NEXT_PUBLIC_USE_MOCK === "true" ? <p>Mock transaction complete.</p> : <a className="underline" href={config.explorerTxUrl+tx} target="_blank" rel="noreferrer">View transaction</a>)}<div role="tablist" className="flex gap-2"><button role="tab" aria-selected={tab==="requests"} className={tab==="requests"?button:"rounded border border-slate-300 px-4 py-2"} onClick={()=>setTab("requests")}>Requests</button><button role="tab" aria-selected={tab==="portfolio"} className={tab==="portfolio"?button:"rounded border border-slate-300 px-4 py-2"} onClick={()=>setTab("portfolio")}>Portfolio</button></div>{tab==="requests" && <>{eligible.length===0 && <p>No confirmed requests for this account.</p>}{eligible.map(r=>{const c=classify(r);const p=provider(r.creditor);return <section key={r.id} className={card}><h3 className="font-bold">#{r.id} · {c.rule?.label}</h3><p>Worker: {r.worker===config.accounts.worker?people.worker.name:r.worker}</p><p>Provider: {p?.name} · {p?.regNo}</p><p>Amount: {amount(r.legalAmount)} USDC · share: {r.shareBps/100}%</p><p>{c.reason} {c.rule && <a className="underline" href={c.rule.sourceUrl} target="_blank" rel="noreferrer">Source</a>}</p><Verify hash={r.docHash}/>{role==="funder" ? <><label>Flat fee (%) <input className="w-20 border" type="number" min="0" max="8" step="0.01" value={fee} onChange={e=>setFee(e.target.value)}/></label><p>Estimated repayment: {r.shareBps>0 && Number.isSafeInteger(feeBps) && feeBps>=0 && feeBps<=800 ? ((r.legalAmount * BigInt(10000 + feeBps) / 10000n + (4000000000n * BigInt(r.shareBps) / 10000n) - 1n) / (4000000000n * BigInt(r.shareBps) / 10000n)).toString() : "—"} remittances of 400 USDC, assuming the same share each time.</p></> : <p>Grant · fee 0 · worker owes 0</p>}<button className={button} disabled={busy} onClick={()=>void fund(r.id)}>{busy?"Submitting…":role==="employer"?"Pay as employer":"Fund loan"}</button></section>})}</>}{tab==="portfolio" && <>{loans.filter(l=>l.funder===address).map(l=><section key={l.id} className={card}><h3 className="font-bold">Loan #{l.id}</h3><p className={l.isOverdue ? "text-red-700 font-bold" : ""}>Status: {l.status==="Repaid"?"Repaid":l.isOverdue?"Overdue":l.missedPeriods>0?`Paused ${l.missedPeriods} of ${maxPause}`:"Active"}</p><p>Outstanding {amount(l.outstanding)} · repaid {amount(l.totalRepaid)} · remittances {l.remitCount}</p><a className="underline" href={`/proof/${l.id}`}>View receipt</a></section>)}{!loans.some(l=>l.funder===address) && <p>No funded loans.</p>}</>}</main>;
+  // Two roles share this page. Anything that is not the employer account is asked to switch to the funder account.
+  const { role } = useWallet();
+  const guard: FunderRole = role === "employer" ? "employer" : "funder";
+  return (
+    <PageShell title="Funding">
+      <RoleGuard role={guard}>
+        <Funding role={guard} />
+      </RoleGuard>
+    </PageShell>
+  );
 }
 
+function Funding({ role }: { role: FunderRole }) {
+  const client = useLaya();
+  const { address } = useWallet();
+  const [requests, setRequests] = useState<PayoffRequest[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [fee, setFee] = useState("3");
+  const [tab, setTab] = useState("requests");
+  const [maxPause, setMaxPause] = useState(3);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const tx = useTx<TxResult>();
 
+  const refresh = useCallback(async () => {
+    try {
+      const [r, l, cfg] = await Promise.all([client.listRequests(), client.listLoans(), client.getConfig()]);
+      setRequests(r); setLoans(l); setMaxPause(cfg.maxPausePeriods); setLoadError(null);
+    } catch (e) { setLoadError(errorText(e)); }
+  }, [client]);
+  useEffect(() => {
+    void Promise.resolve().then(refresh);
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => window.clearInterval(timer);
+  }, [refresh, address]);
+
+  const feeParts = /^(\d+)(?:\.(\d{1,2}))?$/.exec(fee.trim());
+  const feeBps = feeParts ? Number(feeParts[1]) * 100 + Number((feeParts[2] ?? "").padEnd(2, "0")) : NaN;
+
+  async function fund(id: number) {
+    tx.reset();
+    const r = await tx.run(async () => {
+      if (role === "funder" && (!Number.isSafeInteger(feeBps) || feeBps < 0 || feeBps > 800)) {
+        throw new LayaError(0, "Enter a fee from 0 to 8%, with at most two decimal places.");
+      }
+      return client.fundRequest({ requestId: id, mode: role === "employer" ? "Grant" : "Loan", feeBps: role === "employer" ? 0 : feeBps });
+    });
+    if (r) await refresh();
+  }
+
+  const eligible = requests.filter((r) => r.status === "Confirmed" && ((role === "funder" && classify(r).payer === "worker") || (role === "employer" && classify(r).payer === "employer")));
+  const mine = loans.filter((l) => l.funder === address);
+
+  return (
+    <div className="space-y-4">
+      {loadError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{loadError}</p>}
+      <TxStatus busy={tx.busy} error={tx.error} txHash={tx.result?.txHash} busyText="Submitting…" />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="requests">Requests</TabsTrigger>
+          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="requests" className="space-y-4">
+          {eligible.length === 0 && <p className="text-sm text-muted-foreground">No confirmed requests for this account.</p>}
+          {eligible.map((r) => {
+            const c = classify(r);
+            const p = provider(r.creditor);
+            return (
+              <Card key={r.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle>#{r.id} · {c.rule?.label}</CardTitle>
+                    <StatusBadge status={r.status} />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p>Worker: {r.worker === config.accounts.worker ? people.worker.name : r.worker}</p>
+                  <p>Provider: {p?.name} · {p?.regNo}</p>
+                  <div>
+                    <p>Amount:</p>
+                    <AmountDisplay units={r.legalAmount} size="md" />
+                  </div>
+                  <p>Share: {r.shareBps / 100}%</p>
+                  <p>{c.reason} {c.rule && <a className="underline" href={c.rule.sourceUrl} target="_blank" rel="noreferrer">Source</a>}</p>
+                  <Verify hash={r.docHash} />
+                  {role === "funder" ? (
+                    <>
+                      <div className="space-y-1">
+                        <Label htmlFor={`fee-${r.id}`}>Flat fee (%)</Label>
+                        <Input id={`fee-${r.id}`} className="w-24" type="number" min="0" max="8" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
+                      </div>
+                      <p>Estimated repayment: {r.shareBps > 0 && Number.isSafeInteger(feeBps) && feeBps >= 0 && feeBps <= 800 ? ((r.legalAmount * BigInt(10000 + feeBps) / 10000n + (4000000000n * BigInt(r.shareBps) / 10000n) - 1n) / (4000000000n * BigInt(r.shareBps) / 10000n)).toString() : "—"} remittances of 400 USDC, assuming the same share each time.</p>
+                    </>
+                  ) : (
+                    <p>Grant · fee 0 · worker owes 0</p>
+                  )}
+                  <Button disabled={tx.busy} onClick={() => void fund(r.id)}>
+                    {tx.busy ? "Submitting…" : role === "employer" ? "Pay as employer" : "Fund loan"}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
+        <TabsContent value="portfolio" className="space-y-4">
+          {mine.map((l) => {
+            // Same wording as before: "Overdue" carries no "n missed" detail.
+            const s = loanDisplayStatus(l, maxPause);
+            return (
+              <Card key={l.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle>Loan #{l.id}</CardTitle>
+                    <StatusBadge status={s.status} detail={s.status === "Overdue" ? undefined : s.detail} />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><p>Outstanding</p><AmountDisplay units={l.outstanding} size="sm" showPhp={false} /></div>
+                    <div><p>Repaid</p><AmountDisplay units={l.totalRepaid} size="sm" showPhp={false} /></div>
+                  </div>
+                  <p>Remittances: {l.remitCount}</p>
+                  <Link className="underline" href={`/proof/${l.id}`}>View receipt</Link>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {mine.length === 0 && <p className="text-sm text-muted-foreground">No funded loans.</p>}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

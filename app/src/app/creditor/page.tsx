@@ -1,16 +1,70 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { AmountDisplay } from "@/components/AmountDisplay";
+import { errorText } from "@/components/errors";
+import { PageShell } from "@/components/PageShell";
+import { RoleGuard } from "@/components/RoleGuard";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TxStatus } from "@/components/TxStatus";
+import { useTx } from "@/components/useTx";
 import { useLaya } from "@/lib/hooks/useLaya";
 import { useWallet } from "@/lib/hooks/useWallet";
-import type { PayoffRequest } from "@/lib/types";
-import config from "@/lib/config";
-import { amount, button, card, classify } from "@/data/ui";
+import type { PayoffRequest, TxResult } from "@/lib/types";
+import { classify } from "@/data/ui";
 
 export default function ProviderPage() {
- const client = useLaya(); const { address, role } = useWallet();
- const [requests,setRequests] = useState<PayoffRequest[]>([]); const [message,setMessage] = useState(""); const [tx,setTx] = useState(""); const [busy,setBusy] = useState(false);
- const refresh = useCallback(async () => { try { setRequests(await client.listRequests()); } catch(e) { setMessage((e as Error).message); } },[client]);
- useEffect(() => { void Promise.resolve().then(refresh); },[refresh,address]);
- async function confirm(id:number) { setBusy(true); setMessage(""); setTx(""); try { const r=await client.confirmRequest(id); setTx(r.txHash); await refresh(); } catch(e) { setMessage((e as Error).message); } finally { setBusy(false); } }
- return <main className="mx-auto max-w-3xl space-y-5 p-6"><h1 className="text-3xl font-bold">Provider</h1><p>Testnet · {address ?? "No wallet connected"}</p><button className={button} onClick={() => void client.connect().catch(e => setMessage(e.message))}>{address ? "Reconnect / switch wallet" : "Connect wallet"}</button>{role !== "creditor" && <p>Switch to a provider account to confirm invoices.</p>}{message && <p role="alert">{message}</p>}{tx && (process.env.NEXT_PUBLIC_USE_MOCK === "true" ? <p>Mock transaction complete.</p> : <a className="underline" href={config.explorerTxUrl+tx} target="_blank" rel="noreferrer">View transaction</a>)}{requests.filter(r => r.creditor === address && r.status === "Open").map(r => <section className={card} key={r.id}><h2 className="font-bold">Request #{r.id}: {classify(r).rule?.label ?? "Unknown bill"}</h2><p>Invoice amount: {amount(r.legalAmount)} USDC</p><p>By confirming, you state that the invoice amount is exactly this.</p><button className={button} disabled={busy || role !== "creditor"} onClick={() => void confirm(r.id)}>{busy ? "Confirming…" : "Confirm invoice"}</button></section>)}{!requests.some(r=>r.creditor===address && r.status==="Open") && <p>No open requests for this provider.</p>}</main>;
+  return (
+    <PageShell title="Provider">
+      <RoleGuard role="creditor">
+        <OpenRequests />
+      </RoleGuard>
+    </PageShell>
+  );
+}
+
+function OpenRequests() {
+  const client = useLaya();
+  const { address } = useWallet();
+  const [requests, setRequests] = useState<PayoffRequest[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const tx = useTx<TxResult>();
+
+  const refresh = useCallback(async () => {
+    try { setRequests(await client.listRequests()); setLoadError(null); } catch (e) { setLoadError(errorText(e)); }
+  }, [client]);
+  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh, address]);
+
+  async function confirm(id: number) {
+    tx.reset();
+    if (await tx.run(() => client.confirmRequest(id))) await refresh();
+  }
+
+  const open = requests.filter((r) => r.creditor === address && r.status === "Open");
+  return (
+    <div className="space-y-4">
+      {loadError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{loadError}</p>}
+      <TxStatus busy={tx.busy} error={tx.error} txHash={tx.result?.txHash} busyText="Confirming…" />
+      {open.map((r) => (
+        <Card key={r.id}>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle>Request #{r.id}: {classify(r).rule?.label ?? "Unknown bill"}</CardTitle>
+              <StatusBadge status={r.status} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-sm">Invoice amount:</p>
+              <AmountDisplay units={r.legalAmount} size="md" />
+            </div>
+            <p className="text-sm">By confirming, you state that the invoice amount is exactly this.</p>
+            <Button disabled={tx.busy} onClick={() => void confirm(r.id)}>{tx.busy ? "Confirming…" : "Confirm invoice"}</Button>
+          </CardContent>
+        </Card>
+      ))}
+      {open.length === 0 && <p className="text-sm text-muted-foreground">No open requests for this provider.</p>}
+    </div>
+  );
 }
