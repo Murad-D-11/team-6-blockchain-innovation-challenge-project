@@ -18,3 +18,4 @@ Start a session with: “Read `agents/README.md` and help me with [task].”
 3. For coding handoffs, include the task, relevant files or interfaces, constraints, and an acceptance check.
 4. Bring changes to shared scope or team commitments to the team for approval. Record decisions that affect others in the relevant doc or issue.
 5. Use role descriptions for ownership in agent-produced documents, such as “pitch owner” or “contract owner.” Keep teammate assignments in the team's task board or source plan.
+6. Whenever you add or move a document into `context/`, add an entry in [the context index](context/README.md) with a relative link and a short description of when to use it.
