@@ -1491,3 +1491,225 @@ fn contract_errors_carry_their_numbers_through_the_client() {
     let e = s.client.try_set_period(&0, &3).unwrap_err().unwrap();
     assert_eq!(e as u32, 11);
 }
+
+// ---- hardening tests (Nov 8) ----
+
+use crate::{DataKey, TTL_EXTEND_TO, TTL_THRESHOLD};
+use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
+
+fn instance_ttl(s: &Setup) -> u32 {
+    s.env
+        .as_contract(&s.contract_id, || s.env.storage().instance().get_ttl())
+}
+
+fn persistent_ttl(s: &Setup, key: &DataKey) -> u32 {
+    s.env
+        .as_contract(&s.contract_id, || s.env.storage().persistent().get_ttl(key))
+}
+
+fn advance_ledgers(s: &Setup, n: u32) {
+    s.env.ledger().with_mut(|li| li.sequence_number += n);
+}
+
+// Storage lifetime: threshold 120_960, extend to 518_400. Every write bumps the touched entries to
+// 518_400 once fewer than 120_960 ledgers remain, and leaves them alone above the threshold.
+#[test]
+fn ttl_constants_are_the_plan_values() {
+    assert_eq!(TTL_THRESHOLD, 120_960);
+    assert_eq!(TTL_EXTEND_TO, 518_400);
+}
+
+#[test]
+fn ttl_is_extended_on_every_write_below_the_threshold() {
+    let s = setup();
+    let a = actors(&s); // add_creditor writes the creditor flag
+    assert_eq!(instance_ttl(&s), TTL_EXTEND_TO); // constructor
+    assert_eq!(persistent_ttl(&s, &DataKey::Creditor(a.creditor.clone())), TTL_EXTEND_TO);
+
+    // request_payoff, then fund_request, write the request, the loan and the instance.
+    let id = confirmed_request(&s, &a, P190, 1500);
+    let funder = funded_user(&s, P190);
+    s.client.fund_request(&funder, &id, &Mode::Loan, &300);
+    assert_eq!(persistent_ttl(&s, &DataKey::Request(id)), TTL_EXTEND_TO);
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_EXTEND_TO);
+    assert_eq!(instance_ttl(&s), TTL_EXTEND_TO);
+
+    // A second request that no one touches again.
+    let idle = open_request(&s, &a, P190, 12, 1500);
+    assert_eq!(idle, 2);
+
+    // Above the threshold a write does NOT extend: 1_000 ledgers pass, a write on request 2 runs.
+    advance_ledgers(&s, 1_000);
+    s.client.confirm_request(&idle);
+    assert_eq!(persistent_ttl(&s, &DataKey::Request(idle)), TTL_EXTEND_TO - 1_000);
+    assert_eq!(instance_ttl(&s), TTL_EXTEND_TO - 1_000);
+
+    // Just below the threshold (120_959 left) a write extends the touched entries back to 518_400.
+    advance_ledgers(&s, TTL_EXTEND_TO - 1_000 - (TTL_THRESHOLD - 1));
+    assert_eq!(persistent_ttl(&s, &DataKey::Request(idle)), TTL_THRESHOLD - 1);
+    s.client.cancel_request(&idle);
+    assert_eq!(persistent_ttl(&s, &DataKey::Request(idle)), TTL_EXTEND_TO);
+    assert_eq!(instance_ttl(&s), TTL_EXTEND_TO);
+
+    // Entries the write did not touch keep counting down (the contract only bumps what it writes).
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_THRESHOLD - 1);
+    assert_eq!(persistent_ttl(&s, &DataKey::Request(id)), TTL_THRESHOLD - 1);
+
+    // Exactly AT the threshold is not "below": no extension.
+    advance_ledgers(&s, 1); // idle request: 518_399 left, Loan(id): 120_958 left
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_THRESHOLD - 2);
+}
+
+#[test]
+fn set_share_extends_the_loan_and_set_period_extends_the_instance() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a);
+    advance_ledgers(&s, TTL_EXTEND_TO - (TTL_THRESHOLD - 1));
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_THRESHOLD - 1);
+    s.client.set_share(&id, &1500);
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_EXTEND_TO);
+
+    advance_ledgers(&s, TTL_EXTEND_TO - (TTL_THRESHOLD - 1));
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_THRESHOLD - 1);
+    // set_period only writes the instance, so it bumps the instance and leaves the loan counting down
+    s.client.set_period(&60, &3);
+    assert_eq!(persistent_ttl(&s, &DataKey::Loan(id)), TTL_THRESHOLD - 1);
+    assert_eq!(instance_ttl(&s), TTL_EXTEND_TO);
+}
+
+// The demo script (PLAN-v2 steps 1 to 8) in one contract: training 190 as a Loan at 3%, medical 65 as
+// an employer Grant, a 400 USDC remit, then one period of silence.
+#[test]
+fn demo_script_end_to_end() {
+    let s = setup();
+    s.env.mock_all_auths();
+    let maria = Address::generate(&s.env);
+    let lorna = Address::generate(&s.env);
+    let training_center = Address::generate(&s.env);
+    let clinic = Address::generate(&s.env);
+    s.client.add_creditor(&training_center);
+    s.client.add_creditor(&clinic);
+    let bayanihan = funded_user(&s, 100_000_000_000); // funder 10,000 USDC
+    let employer = funded_user(&s, 100_000_000_000); // employer 10,000 USDC
+    StellarAssetClient::new(&s.env, &s.token).mint(&maria, &20_000_000_000); // worker 2,000 USDC
+    let hash = BytesN::from_array(&s.env, &HASH);
+    s.env.ledger().set_timestamp(1_000);
+
+    // Step 1: training first (request 1), medical second (request 2).
+    let r1 = s
+        .client
+        .request_payoff(&maria, &lorna, &training_center, &1_900_000_000, &12, &1500, &hash);
+    let r2 = s
+        .client
+        .request_payoff(&maria, &lorna, &clinic, &650_000_000, &12, &1500, &hash);
+    assert_eq!((r1, r2, s.client.request_count()), (1, 2, 2));
+    assert_eq!(s.client.get_request(&1).legal_amount, 1_900_000_000);
+    assert_eq!(s.client.get_request(&2).legal_amount, 650_000_000);
+
+    // Steps 2 and 3: each provider confirms its own request.
+    s.client.confirm_request(&r1);
+    s.client.confirm_request(&r2);
+    assert_eq!(s.client.get_request(&1).status, RequestStatus::Confirmed);
+    assert_eq!(s.client.get_request(&2).status, RequestStatus::Confirmed);
+
+    // Step 4: the funder takes a Loan at 3%. 190 goes straight to the training center.
+    assert_eq!(s.client.fund_request(&bayanihan, &r1, &Mode::Loan, &300), 1);
+    assert_eq!(bal(&s, &training_center), 1_900_000_000);
+    assert_eq!(bal(&s, &bayanihan), 100_000_000_000 - 1_900_000_000);
+    assert_eq!(s.client.get_loan(&1).outstanding, 1_957_000_000); // Maria owes 195.70
+
+    // Step 5: the employer pays the medical exam as a Grant. 65 goes to the clinic, Maria owes 0.
+    assert_eq!(s.client.fund_request(&employer, &r2, &Mode::Grant, &0), 2);
+    assert_eq!(bal(&s, &clinic), 650_000_000);
+    assert_eq!(bal(&s, &employer), 100_000_000_000 - 650_000_000);
+    let grant = s.client.get_loan(&2);
+    assert_eq!((grant.outstanding, grant.status), (0, LoanStatus::Repaid));
+    assert_eq!(s.client.get_request(&1).status, RequestStatus::Funded);
+    assert_eq!(s.client.get_request(&2).status, RequestStatus::Funded);
+
+    // Steps 7 and 9: Maria sends 400 USDC home. 60 to the funder, 340 to Lorna, 195.70 -> 135.70.
+    let r = s.client.remit(&1, &4_000_000_000);
+    assert_eq!(
+        r,
+        RemitResult { to_lender: 600_000_000, to_family: 3_400_000_000, outstanding: 1_357_000_000 }
+    );
+    assert_eq!(bal(&s, &bayanihan), 100_000_000_000 - 1_900_000_000 + 600_000_000);
+    assert_eq!(bal(&s, &lorna), 3_400_000_000);
+    assert_eq!(bal(&s, &maria), 20_000_000_000 - 4_000_000_000);
+    // The employer's grant is untouched by the remit.
+    assert_eq!(bal(&s, &employer), 100_000_000_000 - 650_000_000);
+    assert_eq!(s.client.get_loan(&2).total_repaid, 0);
+
+    // Step 8: one 60 s period of silence. Paused 1 of 3, balance unchanged, grant never overdue.
+    s.env.ledger().set_timestamp(1_060);
+    assert_eq!(s.client.missed_periods(&1), 1);
+    assert!(!s.client.is_overdue(&1));
+    assert_eq!(s.client.missed_periods(&2), 0);
+    assert!(!s.client.is_overdue(&2));
+    assert_eq!(s.client.get_loan(&1).outstanding, 1_357_000_000);
+    assert_eq!(s.client.get_config().max_pause_periods, 3);
+}
+
+// With max_pause_periods = 0 the first missed period already makes a loan overdue.
+#[test]
+fn is_overdue_with_max_pause_periods_zero() {
+    let s = setup();
+    let a = actors(&s);
+    let (id, _f) = golden_loan(&s, &a); // last_payment_at = 1000, period 60
+    s.client.set_period(&60, &0);
+    let at = |t: u64| s.env.ledger().set_timestamp(t);
+
+    at(1_000);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (0, false)); // 0 > 0 is false
+    at(1_059);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (0, false));
+    at(1_060);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (1, true)); // 1 > 0
+
+    // a real payment resets it
+    s.client.remit(&id, &4_000_000_000);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (0, false));
+
+    // a repaid loan is never overdue, even with max 0
+    at(100_000);
+    assert!(s.client.is_overdue(&id));
+    s.client.remit(&id, &10_000_000_000); // 1,000 USDC: 15% (150) covers the remaining 135.70
+    assert_eq!(s.client.get_loan(&id).status, LoanStatus::Repaid);
+    assert_eq!((s.client.missed_periods(&id), s.client.is_overdue(&id)), (0, false));
+}
+
+// Removing a provider only affects NEW requests. Existing requests keep working: confirm and fund
+// do not re-check the registry (documented in lib.rs), and nothing stored is touched.
+#[test]
+fn removing_a_provider_after_a_request_exists() {
+    let s = setup();
+    let a = actors(&s);
+    let open = open_request(&s, &a, P190, 12, 1500);
+    let confirmed = confirmed_request(&s, &a, P190, 1500);
+    let before = s.client.get_request(&open);
+
+    s.client.remove_creditor(&a.creditor);
+    assert!(!s.client.is_creditor(&a.creditor));
+    // existing requests are untouched
+    assert_eq!(s.client.get_request(&open), before);
+    assert_eq!(s.client.get_request(&confirmed).status, RequestStatus::Confirmed);
+    assert_eq!(s.client.request_count(), 2);
+    // new requests to the removed provider are refused (Error 3)...
+    assert_eq!(
+        try_open(&s, &a, &a.creditor, P190, 12, 1500),
+        Err(Error::CreditorNotRegistered)
+    );
+    // ...but the existing Open request can still be confirmed, and both can still be funded
+    s.client.confirm_request(&open);
+    let funder = funded_user(&s, 2 * P190);
+    s.client.fund_request(&funder, &open, &Mode::Loan, &300);
+    s.client.fund_request(&funder, &confirmed, &Mode::Grant, &0);
+    assert_eq!(token_client(&s).balance(&a.creditor), 2 * P190);
+    assert_eq!(s.client.get_loan(&open).outstanding, 1_957_000_000);
+    assert_eq!(s.client.get_loan(&confirmed).status, LoanStatus::Repaid);
+
+    // re-adding makes new requests work again, with the next id
+    s.client.add_creditor(&a.creditor);
+    assert_eq!(try_open(&s, &a, &a.creditor, P190, 12, 1500), Ok(3));
+}
