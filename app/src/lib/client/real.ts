@@ -60,6 +60,12 @@ function cursorLedger(cursor: string): number {
 
 const nowSecs = () => Math.floor(Date.now() / 1000);
 
+/** How long a read config is reused (ms). setPeriod clears it. */
+export const CONFIG_TTL_MS = 30_000;
+
+/** Contract: a Funded or Cancelled request is never written again (confirm needs Open, fund needs Confirmed, cancel needs Open or Confirmed). */
+const isTerminalRequest = (r: PayoffRequest) => r.status === "Funded" || r.status === "Cancelled";
+
 /**
  * LayaClient against the deployed contract. Writes are simulated first (a contract Err is thrown
  * before the wallet is asked to sign), then signed by the injected Signer and sent. Reads use the
@@ -68,6 +74,13 @@ const nowSecs = () => Math.floor(Date.now() / 1000);
 export class RealLayaClient implements LayaClient {
   private addr: string | null = null;
   private readonly signer: Signer;
+  /** Funded and Cancelled requests, which can never change. Per client instance. */
+  private readonly finalRequests = new Map<number, PayoffRequest>();
+  private cfgCache: { value: Config; at: number } | null = null;
+  private cfgInflight: Promise<Config> | null = null;
+  /** Bumped when the config changes, so a read that started earlier cannot refill the cache. */
+  private cfgGen = 0;
+  private listInflight: Promise<PayoffRequest[]> | null = null;
   /** Default signer: Freighter. */
   constructor(opts: { signer?: Signer } = {}) {
     this.signer = opts.signer ?? new FreighterSigner();
@@ -129,6 +142,8 @@ export class RealLayaClient implements LayaClient {
       const value = unwrap(sent.result);
       const txHash = sent.sendTransactionResponse?.hash;
       if (!txHash) throw new Error("The network returned no transaction hash");
+      // A list read that started before this write may be stale: later callers start their own.
+      this.listInflight = null;
       return { value, txHash };
     } catch (e) {
       throw layaErrorFromUnknown(e, config.tokenContractId);
@@ -180,24 +195,61 @@ export class RealLayaClient implements LayaClient {
 
   async setPeriod(p: { periodSecs: number; maxPausePeriods: number }): Promise<TxResult> {
     const { txHash } = await this.write((c) => c.set_period({ period_secs: BigInt(p.periodSecs), max_pause_periods: p.maxPausePeriods }));
+    this.invalidateConfig();
     return { txHash };
   }
 
+  private invalidateConfig(): void {
+    this.cfgGen++;
+    this.cfgCache = null;
+    this.cfgInflight = null;
+  }
+
+  /** Cached for CONFIG_TTL_MS; concurrent calls share one read. */
   async getConfig(): Promise<Config> {
-    return configFromContract(await this.read((c) => c.get_config()));
+    if (this.cfgCache && Date.now() - this.cfgCache.at < CONFIG_TTL_MS) return this.cfgCache.value;
+    if (this.cfgInflight) return this.cfgInflight;
+    const gen = this.cfgGen;
+    const p = this.read((c) => c.get_config())
+      .then((raw) => {
+        const value = configFromContract(raw);
+        if (gen === this.cfgGen) this.cfgCache = { value, at: Date.now() };
+        return value;
+      })
+      .finally(() => {
+        if (this.cfgInflight === p) this.cfgInflight = null;
+      });
+    this.cfgInflight = p;
+    return p;
   }
 
+  /** Funded and Cancelled requests come from memory; Open and Confirmed are always re-read. */
   async getRequest(id: number): Promise<PayoffRequest> {
-    return requestFromContract(await this.readOk((c) => c.get_request({ id })));
+    const hit = this.finalRequests.get(id);
+    if (hit) return hit;
+    const r = requestFromContract(await this.readOk((c) => c.get_request({ id })));
+    if (isTerminalRequest(r)) this.finalRequests.set(id, r);
+    return r;
   }
 
-  /** ids 1..=request_count, newest first. */
-  async listRequests(): Promise<PayoffRequest[]> {
-    const count = await this.read((c) => c.request_count());
-    const ids = Array.from({ length: count }, (_, i) => count - i);
-    return Promise.all(ids.map((id) => this.getRequest(id)));
+  /** ids 1..=request_count, newest first. Concurrent calls share one set of reads. */
+  listRequests(): Promise<PayoffRequest[]> {
+    if (this.listInflight) return this.listInflight;
+    const p = (async () => {
+      const count = await this.read((c) => c.request_count());
+      const ids = Array.from({ length: count }, (_, i) => count - i);
+      return Promise.all(ids.map((id) => this.getRequest(id)));
+    })().finally(() => {
+      if (this.listInflight === p) this.listInflight = null;
+    });
+    this.listInflight = p;
+    return p;
   }
 
+  /**
+   * Always re-read: a Repaid loan still changes (remit and set_share are allowed on it), so only
+   * the config is cached. missedPeriods and overdue use the current time on every call.
+   */
   async getLoan(id: number): Promise<Loan> {
     const [loan, cfg] = await Promise.all([this.readOk((c) => c.get_loan({ id })), this.getConfig()]);
     return loanFromContract(loan, cfg, nowSecs());
