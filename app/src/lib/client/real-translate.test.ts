@@ -14,6 +14,7 @@ import {
   TOKEN_FAILURE_MESSAGE,
   bytesToHex,
   configFromContract,
+  eventFromContract,
   hexToBytes,
   layaErrorFromCode,
   layaErrorFromContract,
@@ -207,5 +208,41 @@ describe("layaErrorFromUnknown", () => {
     expect(layaErrorFromUnknown(new Error("fetch failed"))).toMatchObject({ code: 0, message: ERROR_MESSAGES[0] });
     expect(layaErrorFromUnknown("boom")).toMatchObject({ code: 0 });
     expect(layaErrorFromUnknown(undefined)).toMatchObject({ code: 0 });
+  });
+});
+
+describe("eventFromContract", () => {
+  const META = { ledger: 123, ledgerClosedAt: "2026-11-07T10:00:00Z", txHash: "ab".repeat(32) };
+  const TS = Math.floor(Date.parse("2026-11-07T10:00:00Z") / 1000);
+  const base = { id: 4, ledger: 123, timestamp: TS, txHash: META.txHash };
+
+  it("RequestCreated", () => {
+    expect(eventFromContract({ name: "RequestCreated", data: { id: 4, worker: W, creditor: C, legal_amount: 1_900_000_000n } }, META)).toEqual({
+      ...base, type: "request_created", data: { worker: W, creditor: C, legalAmount: 1_900_000_000n },
+    });
+  });
+  it("RequestConfirmed", () => {
+    expect(eventFromContract({ name: "RequestConfirmed", data: { id: 4, creditor: C } }, META)).toEqual({
+      ...base, type: "request_confirmed", data: { creditor: C },
+    });
+  });
+  it("Payoff maps the mode number to its name", () => {
+    expect(eventFromContract({ name: "Payoff", data: { id: 4, funder: F, creditor: C, amount: 1_900_000_000n, mode: 1 as never } }, META)).toEqual({
+      ...base, type: "payoff", data: { funder: F, creditor: C, amount: 1_900_000_000n, mode: "Grant" },
+    });
+  });
+  it("Remit", () => {
+    expect(eventFromContract({ name: "Remit", data: { id: 4, to_lender: 600_000_000n, to_family: 3_400_000_000n, outstanding: 1_357_000_000n } }, META)).toEqual({
+      ...base, type: "remit", data: { toLender: 600_000_000n, toFamily: 3_400_000_000n, outstanding: 1_357_000_000n },
+    });
+  });
+  it("Repaid has empty data", () => {
+    expect(eventFromContract({ name: "Repaid", data: { id: 4 } }, META)).toEqual({ ...base, type: "repaid", data: {} });
+  });
+  it("leaves out fields the event did not carry", () => {
+    expect(eventFromContract({ name: "Remit", data: { id: 4 } }, META)?.data).toEqual({});
+  });
+  it("an unreadable close time gives null", () => {
+    expect(eventFromContract({ name: "Repaid", data: { id: 4 } }, { ...META, ledgerClosedAt: "nope" })).toBeNull();
   });
 });

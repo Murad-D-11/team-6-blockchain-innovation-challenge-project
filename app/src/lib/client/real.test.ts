@@ -24,10 +24,16 @@ function mockFetch(status: number, body: unknown) {
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 describe("RealLayaClient without the network", () => {
-  it("getEvents returns [] for now", async () => {
+  it("getEvents returns [] (no throw) when the network fails, and logs why", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const c = new RealLayaClient();
     expect(c.address()).toBeNull();
     expect(await c.getEvents()).toEqual([]);
+    expect(await c.getEvents(3)).toEqual([]);
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
+    vi.unstubAllGlobals();
   });
   it("rejects a malformed address as LayaError(0) before any network call", async () => {
     const f = vi.fn();

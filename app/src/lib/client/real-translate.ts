@@ -6,6 +6,7 @@
  */
 import type {
   Config as ContractConfig,
+  ContractEvent,
   Loan as ContractLoan,
   PayoffRequest as ContractRequest,
   RemitResult as ContractRemitResult,
@@ -15,7 +16,9 @@ import { isOverdue, missedPeriods } from "../formulas";
 import {
   LayaError,
   type Config,
+  type LayaEvent,
   type Loan,
+  type Mode,
   type PayoffRequest,
   type RemitResult,
 } from "../types";
@@ -119,6 +122,44 @@ export function loanFromContract(
 
 export function remitResultFromContract(c: ContractRemitResult, txHash: string): RemitResult {
   return { txHash, toLender: c.to_lender, toFamily: c.to_family, outstanding: c.outstanding };
+}
+
+/** Where an event was recorded: from the RPC's event response. */
+export interface EventMeta { ledger: number; ledgerClosedAt: string; txHash: string }
+
+function modeOf(m: unknown): Mode | undefined {
+  if (m === "Loan" || m === "Grant") return m;
+  if (typeof m === "number") return modeFromNumber(m);
+  return undefined;
+}
+
+/** Keeps only the fields the contract actually sent (the bindings mark them optional). */
+function defined(o: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+}
+
+/**
+ * A parsed contract event as an app LayaEvent (camelCase data, bigint amounts, unix-second timestamp).
+ * Null when the close time is unreadable. Pure: no network.
+ */
+export function eventFromContract(ev: ContractEvent, meta: EventMeta): LayaEvent | null {
+  const timestamp = Math.floor(Date.parse(meta.ledgerClosedAt) / 1000);
+  if (!Number.isFinite(timestamp)) return null;
+  const base = { id: ev.data.id, ledger: meta.ledger, timestamp, txHash: meta.txHash };
+  switch (ev.name) {
+    case "RequestCreated":
+      return { ...base, type: "request_created", data: defined({ worker: ev.data.worker, creditor: ev.data.creditor, legalAmount: ev.data.legal_amount }) };
+    case "RequestConfirmed":
+      return { ...base, type: "request_confirmed", data: defined({ creditor: ev.data.creditor }) };
+    case "Payoff":
+      return { ...base, type: "payoff", data: defined({ funder: ev.data.funder, creditor: ev.data.creditor, amount: ev.data.amount, mode: modeOf(ev.data.mode) }) };
+    case "Remit":
+      return { ...base, type: "remit", data: defined({ toLender: ev.data.to_lender, toFamily: ev.data.to_family, outstanding: ev.data.outstanding }) };
+    case "Repaid":
+      return { ...base, type: "repaid", data: {} };
+    default:
+      return null;
+  }
 }
 
 export const TOKEN_FAILURE_MESSAGE =

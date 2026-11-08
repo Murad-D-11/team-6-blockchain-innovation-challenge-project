@@ -129,6 +129,12 @@ export async function runReads(client: LayaClient): Promise<number> {
     console.log(`  #${l.id} ${l.mode} ${l.status}, outstanding ${l.outstanding}, missedPeriods ${l.missedPeriods}, overdue ${l.isOverdue}`);
   }
 
+  console.log("getEvents");
+  const evs = await client.getEvents();
+  check("is an array", Array.isArray(evs), true);
+  console.log(`  found ${evs.length} event(s)`);
+  for (const e of evs.slice(-3)) console.log(`  ${e.type} #${e.id} ledger ${e.ledger}, tx ${e.txHash.slice(0, 8)}...`);
+
   console.log(failures === 0 ? "\nREADS PASSED" : `\nREADS FAILED (${failures} check${failures === 1 ? "" : "s"})`);
   return failures;
 }

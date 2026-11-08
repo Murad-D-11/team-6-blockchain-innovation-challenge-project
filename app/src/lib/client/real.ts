@@ -1,5 +1,6 @@
 import { Client as LayaContract, type Mode as ContractMode } from "laya-bindings";
 import type { AssembledTransaction, Result } from "@stellar/stellar-sdk/contract";
+import { Server as RpcServer } from "@stellar/stellar-sdk/rpc";
 import { isValidAccount } from "../address";
 import config from "../config";
 import {
@@ -19,6 +20,7 @@ import { FreighterSigner } from "./freighter-signer";
 import type { Signer } from "./signer";
 import {
   configFromContract,
+  eventFromContract,
   hexToBytes,
   layaErrorFromContract,
   layaErrorFromUnknown,
@@ -39,6 +41,21 @@ function unwrap<T>(r: Result<T, ContractErr>): T {
 
 function assertAccount(addr: string): void {
   if (!isValidAccount(addr)) throw new LayaError(0, "That is not a valid Stellar address.");
+}
+
+/** Ledgers (about 5 s each) to start inside the RPC's event range. */
+const EVENTS_START_MARGIN = 100;
+
+/** Pages to follow at most: a 7-day window is about 13 pages of 10,000 ledgers. */
+const EVENTS_MAX_PAGES = 40;
+
+/** The ledger a getEvents cursor points at (the cursor is a TOID, ledger in the high 32 bits). */
+function cursorLedger(cursor: string): number {
+  try {
+    return Number(BigInt(cursor.split("-")[0]) >> 32n);
+  } catch {
+    return Number.MAX_SAFE_INTEGER; // unreadable cursor: stop rather than loop
+  }
 }
 
 const nowSecs = () => Math.floor(Date.now() / 1000);
@@ -203,6 +220,47 @@ export class RealLayaClient implements LayaClient {
   async hasTrustline(address: string): Promise<boolean> { return hasUsdcTrustline(address); }
   async getBalance(address: string): Promise<bigint> { return getUsdcBalance(address); }
 
-  /** Not implemented yet (Nov 7). Pages work with no events. */
-  async getEvents(): Promise<LayaEvent[]> { return []; }
+  /**
+   * Optional timeline: the five contract events, oldest first, from the oldest ledger the RPC still
+   * keeps. Any failure gives [] (logged), so pages work without events.
+   */
+  async getEvents(id?: number): Promise<LayaEvent[]> {
+    try {
+      const server = new RpcServer(config.rpcUrl);
+      const { oldestLedger, latestLedger } = await server.getHealth();
+      // The events range starts a little after getHealth's oldestLedger and moves forward as ledgers
+      // close, so start a margin inside it. Never older than the oldest ledger.
+      const startLedger = Math.min(oldestLedger + EVENTS_START_MARGIN, latestLedger);
+      const c = this.contract(this.addr ?? config.accounts.admin);
+      const t = id === undefined ? undefined : { id };
+      const filters = [{
+        type: "contract" as const,
+        contractIds: [config.contractId],
+        topics: [
+          c.requestCreatedEventFilter(t),
+          c.requestConfirmedEventFilter(t),
+          c.payoffEventFilter(t),
+          c.remitEventFilter(t),
+          c.repaidEventFilter(t),
+        ],
+      }];
+      const out: LayaEvent[] = [];
+      let res = await server.getEvents({ filters, startLedger, limit: 200 });
+      for (let page = 0; ; page++) {
+        for (const e of res.events) {
+          const parsed = c.parseEvent(e.topic, e.value);
+          const ev = parsed && eventFromContract(parsed, { ledger: e.ledger, ledgerClosedAt: e.ledgerClosedAt, txHash: e.txHash });
+          if (ev) out.push(ev);
+        }
+        // Each call scans only about 10,000 ledgers, so an empty or short page does not mean the end.
+        // Keep following the cursor (its high bits are the ledger) until it reaches the latest ledger.
+        if (page >= EVENTS_MAX_PAGES || cursorLedger(res.cursor) >= res.latestLedger - 1) break;
+        res = await server.getEvents({ filters, cursor: res.cursor, limit: 200 });
+      }
+      return out.sort((a, b) => a.ledger - b.ledger);
+    } catch (e) {
+      console.error("getEvents failed; showing no timeline:", e);
+      return [];
+    }
+  }
 }
