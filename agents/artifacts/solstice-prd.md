@@ -1,96 +1,81 @@
 # Solstice working PRD
 
-Draft for product discussion. The prompts are for the team to answer in its own words. Example decisions remain proposed until the team agrees. Use role descriptions for ownership.
+This is our working explanation of what Solstice should do and what the demo needs to prove. The choices below are proposals for the team to discuss. Use the [challenge brief](../context/challenge-brief.md) for organizer rules and the [submission plan](../context/top-16-submission-plan.md) for deadlines and what to submit.
 
-The goal is to agree on what the product should do and what the prototype can prove, so the one-pager and Devpost tell the same defensible story. The [challenge brief](../context/challenge-brief.md) holds organizer requirements. The [Top 16 submission plan](../context/top-16-submission-plan.md) holds deadlines, packaging and submission checks.
+## 1. Why does Maria need money before payday?
 
-## 1. User and current problem
+Maria is a fictional Filipino domestic worker preparing to work in Hong Kong. She gets bills before her first paycheck. If she can’t cover a bill in time, she may have to borrow. A cheaper loan only helps if she knows about it, can qualify, and gets the money before the bill is due.
 
-- Who are we serving first? What happens between receiving a bill and the first paycheck?
-- How does the worker currently cover the cost? Where does that process fail?
-- What is sourced evidence? What is an assumption about Maria's fictional scenario?
-- What would a successful outcome look like for the worker? How could we measure it in a pilot?
+**What we know.** An ILO and Philippine Statistics Authority study using 2019 survey data estimated recruitment costs at about 1.8 months of earnings for domestic-services workers on this route. ICIJ documented cases where recruiters directed workers to expensive lenders. We still need to learn how workers in Maria’s situation cover bills today and what cheaper options they can actually use. [ILO/PSA report](https://www.ilo.org/sites/default/files/2024-05/measuring-sustainable-development-goal-indicator-philippines-report-2023-en.pdf) · [ICIJ investigation](https://www.icij.org/investigations/trafficking-inc/philippine-lenders-and-labor-agents-fleece-workers-seeking-overseas-jobs-interviews-and-confidential-documents-show/)
 
-**Working answer.** Start with Filipino domestic workers preparing for employment in Hong Kong. Maria is a fictional example of a worker who receives bills before her first paycheck. An ILO and Philippine Statistics Authority analysis of 2019 survey data estimated recruitment costs on this corridor at about 1.8 months of earnings for domestic-services workers. That historical figure supports the significance of upfront costs. How a worker in Maria’s situation currently raises money and which part of that process Solstice can improve are open discovery questions. A candidate pilot measure is the amount a worker has to advance out of pocket before departure. [Evidence and source links](../context/top-16-submission-plan.md)
+**What would improve for Maria?** She could avoid borrowing for a bill someone else should pay and get a clear price for any loan she needs. In a small real-world trial, we could measure how much money workers have to pay from their own pockets before departure. The demo shows how payments could work. A trial would tell us whether workers are better off.
 
-## 2. Proposed flow and incentives
+## 2. Who pays whom, and why would they agree?
 
-Start here. Follow a single hypothetical training bill from invoice to repayment before writing the summary.
+Start with one hypothetical training bill. The numbers are demo amounts on Stellar’s test network, where the app uses test funds.
 
-| Step | Who acts and what do they do? | Why would they do it? | What happens if they decline or the step fails? |
-| --- | --- | --- | --- |
-| Worker receives bill and requests financing | Maria submits a hypothetical eligible training invoice and selects a repayment share. | Potentially avoid paying the full bill up front. | No request proceeds without worker authorization. |
-| Provider confirms invoice | Training provider confirms the request. | Direct payment is a plausible incentive. Validate it. | Without confirmation, the funding path should stop. |
-| Funder discloses terms and pays provider | Proposed product flow separates disclosure and worker acceptance from direct payment. The existing contract lets the funder set the fee after the worker signs the request. | **Open.** Decide who advances the money and what would make this loan worth funding. | No advance means the invoice stays unpaid. How the worker sees and accepts the final terms is open. |
-| Worker remits and repayment is split | Proposed demo sends 400 test units at a 15% repayment share, with 60 to the funder and 340 to family. | The worker can repay while sending money home. Willingness to use this channel is open. | A remittance through another service triggers no Solstice repayment. Decide how the product should handle that. |
-| Parties inspect payment evidence | A judge or participant opens a read-only receipt and checks the payment against Testnet evidence. | Independently inspect the demo payment. | If public evidence cannot be opened, the verification check fails. |
+1. **Maria asks for help with a bill of 190.** The school confirms the amount. Getting paid directly could give the school a reason to confirm. If the school skips confirmation, the contract should block funding.
+2. **A lender pays the school 190.** A 3% one-time fee adds 5.70, so Maria owes 195.70. The lender would receive that 5.70 if she repays in full, before the cost of approving and running the loan or covering losses. A lender that already serves these workers is a candidate. We still need to find one that would make this loan on these terms. If nobody funds it, the bill stays unpaid.
+3. **Maria sends 400 home through Solstice.** A transfer home is called a *remittance*. At the 15% share in the example, 60 goes to the lender and 340 goes to her family. She still owes 135.70. The 3% fee sets the extra cost of the loan. The 15% share sets how much of each transfer goes toward paying it back. If Maria sends money through another service, that transfer leaves her Solstice balance unchanged.
+4. **Someone checks the payment.** The demo should let a judge open a public receipt and check the transaction on Stellar. The receipt can help confirm that a payment happened. The school’s confirmation is a separate step.
 
-Explain when the worker sees the total cost, what the current prototype authorizes, and what happens if the worker remits elsewhere. Then explain where the employer-paid bill and placement-fee refusal fit.
+**When does Maria agree to the price?** The code lets Maria sign the request and the lender choose the fee later. There’s no separate signature from Maria accepting the final fee. We need to decide whether she must see and accept the full cost before the school gets paid, and whether to build that into the demo or explain it as a gap. [Contract code](../../contracts/laya/src/lib.rs)
 
-**Proposed role of the other two bills.** Use them to explain why triage comes before borrowing. Show the refusal briefly if verified. Include the employer payment as working only once tested. Both should be checked separately before claiming the full three-bill flow.
+**Where do the other bills fit?** The demo assigns the medical exam to the employer and refuses to finance the placement fee. Hong Kong’s standard contract makes employers responsible for specified expenses, including medical exam fees. Philippine rules exempt domestic workers from placement fees charged by licensed recruitment agencies. The training bill is a fictional example of a cost Maria could be eligible to borrow for. Employer willingness to pay in advance through Solstice still needs checking. [Hong Kong Immigration FAQ, Q14](https://www.immd.gov.hk/eng/faq/foreign-domestic-helpers.html) · [Philippine DMW rules, §56](https://dmw.gov.ph/archives/v1/resources/dsms/DMW/ISN-EXT/2023/DMW-DC-01-2023.pdf)
 
-**Rulebook evidence.** Hong Kong’s standard employment contract assigns specified expenses, including medical exam fees, to the employer. This supports the example’s payer assignment. Willingness to pay up front through Solstice is an adoption question. Philippine DMW rules exempt domestic workers from placement fees charged by licensed recruitment agencies. The training invoice remains a hypothetical eligible bill. [Hong Kong Immigration FAQ, Q14](https://www.immd.gov.hk/eng/faq/foreign-domestic-helpers.html) · [Philippine DMW rules, §56](https://dmw.gov.ph/archives/v1/resources/dsms/DMW/ISN-EXT/2023/DMW-DC-01-2023.pdf)
+## 3. Why would Maria use Solstice? What does Stellar do?
 
-## 3. Product decisions and tradeoffs
+If Maria can go straight to a cheaper lender and get the bill paid in time, she has a good reason to do that. Solstice could help if it reaches her before she borrows, helps sort out who should pay each bill, and gives her a way to get the right bill covered. A worker-support group is one possible way to reach her. We still need to find out how she would hear about us and who would actually put up the money.
 
-For each consequential decision, capture **choice, alternative, rationale, supporting evidence, what would change our mind, and decision status**. Use proposed or agreed. Record only choices that affect the workflow, the MVP or a public claim.
+| Choice to discuss | Other option | Why try it? What would change our minds? |
+| --- | --- | --- |
+| Pay the school directly | Give Maria the money to pay the school | Direct payment ties the loan to a bill the school confirmed. Revisit it if schools can’t accept the payment or the extra steps make it harder for Maria to pay in time. |
+| Repay a share when Maria sends money home | Make a separate loan payment or pay a fixed amount on a schedule | It could fit better with when Maria has money available. Revisit it if she prefers her usual transfer service or if the lender needs a different repayment arrangement. |
+| Spend most of the video on the training loan | Give all three bills equal time | A full loan example shows where the money starts and where it goes. Include more of the other two if the team verifies them and viewers can still follow the loan. |
 
-Start with direct payment to the provider, repayment through Solstice remittances, and what Stellar contributes compared with ordinary payment rails. Explain which parts belong in the app and which require the contract.
+**What Stellar does.** The app uses the demo rules to sort the bills. Code running on Stellar, called a *smart contract*, handles the provider payment and can split money between the lender and family in one transaction while updating what Maria owes. Stellar also gives people a payment record they can check. A regular payment service could do parts of this. The question to answer for judges is who benefits from checking the same record independently and why. [App rules](../../app/src/lib/rulebook.ts) · [Contract code](../../contracts/laya/src/lib.rs)
 
-| Proposed choice | Alternative | Rationale and evidence | What would change the choice? | Status |
-| --- | --- | --- | --- | --- |
-| Pay the provider directly | Pay the worker and have them settle the invoice | Tie financing to a confirmed bill. The [contract](../../contracts/laya/src/lib.rs) implements provider payment. Provider willingness and operational feasibility are open. | A provider workflow test shows direct settlement is impractical or creates a worse outcome for workers. | Proposed |
-| Repay through Solstice remittances | Fixed installment or separate repayment | A single contract call can split the transfer and update the loan. Bill classification stays in the app. Compare this with what a payment provider could do and whether an independently checkable record matters to the parties. | Workers prefer their existing remittance channel or funders need a different repayment arrangement. | Proposed |
-| Make the financed training bill the core demo | Give all three bills equal time | One complete loan path connects the worker’s upfront bill to repayment and verifiable payment evidence. The other bills explain why triage matters. [Submission plan](../context/top-16-submission-plan.md) | A verified broader flow fits the one-minute video and makes the product easier to understand. | Proposed |
+## 4. What does our demo have to show?
 
-## 4. MVP scope and acceptance checks
+The training loan and repayment are proposed must-haves. The other two bills support the story. A behavior counts as working once someone runs it on the version we’ll submit and records the result.
 
-For each proposed must-have, capture **user-visible behavior, priority, acceptance check, proof status, and evidence link**. Keep the list small and state what gets cut first.
+| What we want to show | How we check it | Where we stand |
+| --- | --- | --- |
+| The training bill gets paid | Maria requests financing, the school confirms, and the lender pays the school 190 test units. Check the 5.70 fee and 195.70 owed. Try funding before confirmation and check that no money moves. | Payment logic is in the code. The full run still needs proof. |
+| Maria sends money home and repays part of the same loan | Send 400. Check that 60 goes to the lender, 340 goes to family, and 135.70 remains owed. Have another teammate open the public receipt without team credentials and check the transaction. | The full run still needs proof. |
+| The other bills get different outcomes | Check that the app refuses the placement-fee request without starting funding. Separately, confirm the employer can pay the clinic and Maria owes zero for that bill. | Show these as working only after checking them. Cut the employer transaction from the video first if it crowds out the loan. |
 
-**Build evidence, Nov 8.** Checkout `f873a05` has provider, funder, and proof pages. The worker request, worker dashboard, and family pages are absent in this checkout. No integrated browser run was located. The read-only Testnet smoke attempt stopped on the first config read with a generic wallet/network error. Live behavior remains unverified. Get the integrated branch or deployment and record a clean run before claiming the flow works. [Smoke script](../../app/scripts/smoke.ts)
+**Last build check, Nov 8.** The version we checked, `f873a05`, had pages for the school, lender, and receipt. It was missing the worker request, worker dashboard, and family pages. Our check couldn’t connect to Stellar’s test network from that environment. Get the version that combines everyone’s work, then save the tested version, date, and payment links for the run. [Smoke test](../../app/scripts/smoke.ts)
 
-| User-visible behavior | Priority | Acceptance check | Proof status and evidence |
-| --- | --- | --- | --- |
-| Request, confirm, and fund one eligible training invoice | Proposed must-have | On the deployed build, the worker submits a request, the provider confirms it, and the funder pays the provider 190 test units. Confirm the 3% example fee and the 195.70 balance. Attempt funding before confirmation and check that it fails without moving funds. | Code evidence only. Record deployment, date and transaction links. [Contract](../../contracts/laya/src/lib.rs) |
-| Split a remittance and inspect proof | Proposed must-have | The same loan shows 60 to funder, 340 to family, and 135.70 remaining after a 400-unit remittance. A second person opens the receipt without team credentials and checks the transaction. | End-to-end run unverified. [Pitch context](../context/pitch-context.md) |
-| Explain the other two bills | Conditional video beats | If shown working, verify the app refusal without funding and the employer payment leaving zero owed for that bill. | Unverified. Cut the employer transaction from the video first if it crowds out the loan proof. |
+## 5. What could make this idea fall apart?
 
-## 5. Open risks and next tests
+| Open question | Why it matters | How we can learn |
+| --- | --- | --- |
+| Who would lend 190, and why? | The school stays unpaid if no lender takes the risk. | Ask a lender what it costs to approve and run a loan this small, what would make them say yes, and what they would do if Maria misses payments. Revisit the loan design if the terms don’t work. |
+| How does Maria hear about us before the bill is due? | The recruiter’s lender may be the only option she encounters in time. | Ask a worker or caseworker to walk through a recent bill. Find out who presented it, when it was due, and what options were available. Use the answer to decide where Solstice would need to reach her. |
+| Why would Maria send money home through Solstice? | Paying through another service leaves this loan balance unchanged. | Ask how she chooses a service today. Compare convenience and total cost. Revisit whether to link loan repayment to transfers through Solstice. |
+| When should Maria see and accept the total cost? | She needs to know what she’ll owe before agreeing to the loan. | Walk through what she sees and signs today. Decide what the demo must show and which gap to explain to judges. |
 
-For each consequential unknown, write **assumption, consequence if wrong, smallest useful test, and how the result would change the decision**.
+Record who gave the feedback and what it changed. A worker describing a real bill, an advisor offering an opinion, and a teammate running the demo each answer a different question.
 
-Start with whether a lender would fund the invoice and whether the worker would use this remittance path. Keep real user feedback, advisor input, and internal Testnet evidence distinct.
+## 6. What can we show judges for each criterion?
 
-| Assumption | If wrong | Smallest useful test | Decision it informs |
-| --- | --- | --- | --- |
-| A funder will advance the eligible cost | The loan path has no payer | Ask a prospective funder or advisor what approval, costs, and safeguards would be needed. Record their role and exact evidence. | Whether to retain the payer hypothesis or narrow the claim. |
-| The worker would use this remittance channel | Expected repayments may not occur | Ask a worker or appropriate proxy to walk through their current remittance choices and compare costs and convenience. Label proxy evidence. | Whether repayment through Solstice is a viable requirement. |
-| The worker can understand and accept the total before funding | The proposed consent story may exceed actual behavior | Walk through the signing sequence and compare it with the contract authorization. | Whether explicit fee acceptance is MVP scope or a disclosed production gap. |
-
-## 6. Rubric review
-
-For each published criterion, link the product decisions that matter, record the evidence available today, and identify the largest gap. Use this as a review of the PRD and a guide to what the submission should communicate. The exact Top 16 screening method is unconfirmed. [Challenge brief](../context/challenge-brief.md)
+These are the published criteria. The exact Top 16 screening method is still unconfirmed. [Challenge brief](../context/challenge-brief.md)
 
 ### Business Impact and Relevance (37.5%)
 
-Check problem evidence, first customer segment, differentiation, sustainability, and user validation.
-
-**Evidence and gap.** Corridor research supports the problem framing. Direct provider payment and flexible repayment are proposed responses. The largest gap is evidence that the payer and worker would participate, including who would cover operating costs.
+We have research on recruitment costs and a specific worker in mind. We need to explain why Maria would use Solstice over her available options, who would lend to her, and who would pay to keep the service running. Look for actual feedback and say what it changed.
 
 ### Technology and Implementation (37.5%)
 
-Check meaningful Stellar use, a verifiable end-to-end build, architecture, security and trust, and accessibility.
-
-**Evidence and gap.** The contract contains the transfer and repayment logic. The largest gap is a verified deployed run from request to public proof, including where the app rulebook ends and contract checks begin.
+Show one training bill from request through repayment. Let a judge check the receipt and payment. Explain what the app decides and what Stellar handles. The biggest gap is a verified run on the submission build.
 
 ### Presentation & Deliverables (25%)
 
-Check that a cold reviewer can explain the worker's problem, who pays, how repayment works, and what the demo proves. Use the submission plan for deliverable requirements.
-
-**Evidence and gap.** The planned story and numbers are in the pitch context. Confirm the actual Airtable fields and map each material claim to evidence or an explicit qualifier in the submission draft.
+A viewer should be able to say who paid the school, how Maria pays the lender back, and what the demo proved. Use the [submission plan](../context/top-16-submission-plan.md) to match the actual form fields to the claims and their supporting evidence.
 
 ## How to work through this draft
 
-Explain the flow in your own words. Ask the AI to challenge one assumption at a time. Record decisions once you can defend them, then define what the demo needs to show. Review the result against the rubric before extracting the one-pager and Devpost copy.
+Close the document and explain one bill aloud. Then change one thing. What happens if the lender says no? If Maria uses another transfer service? If she already has a cheaper loan offer? When an answer gets fuzzy, write down the specific question. Decide what we want the product to do, check what the build does, and use both answers when writing the pitch.
 
-References for the structure: [Atlassian PRD template](https://www.atlassian.com/software/confluence/templates/product-requirements), [Storj PRD template](https://github.com/storj/roadmap/blob/main/Product%20Requirements%20Document%20Template), and [store.new proof-of-concept PRD](https://github.com/yournextstore/new.store/blob/main/docs/new-store-prd.md).
+Start with **who puts up the 190 and how Maria finds them before the bill is due**. Record the team’s answer in its own words before treating it as agreed.
