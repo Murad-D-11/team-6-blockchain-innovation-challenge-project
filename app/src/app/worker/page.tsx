@@ -101,6 +101,8 @@ function Dashboard() {
 
       {sorted.map((l) => <LoanCard key={l.id} loan={l} maxPause={maxPause} onChanged={load} />)}
 
+      <WithoutWithLaya />
+
       {waiting.length > 0 && (
         <Card>
           <CardHeader>
@@ -125,8 +127,9 @@ function Dashboard() {
 
 function SendHome({ loans, onDone }: { loans: Loan[]; onDone: () => void }) {
   const laya = useLaya();
-  // Default: the oldest Loan still being repaid. Otherwise any loan (a Grant or repaid loan sends everything to family).
-  const defaultId = (loans.find((l) => l.mode === "Loan" && l.status === "Active") ?? loans[0]).id;
+  // Default: the newest Active loan. `loans` is sorted oldest first, so search from the end.
+  // If none is Active, the newest loan (a Grant or repaid loan sends everything to family).
+  const defaultId = ([...loans].reverse().find((l) => l.status === "Active") ?? loans[loans.length - 1]).id;
   const [loanId, setLoanId] = useState(defaultId);
   const [amount, setAmount] = useState("400");
   const tx = useTx<RemitResult>();
@@ -313,5 +316,38 @@ function ShareControl({ loan, onChanged }: { loan: Loan; onChanged: () => void }
       )}
       <TxStatus busy={tx.busy} error={tx.error} txHash={tx.result?.txHash} busyText="Saving…" />
     </div>
+  );
+}
+
+/**
+ * Static comparison for the pitch (demo step 8). Illustrative numbers from PLAN-v2, no inputs, nothing stored.
+ * Without Laya: 190 + 65 + 1,380 = 1,635 USDC borrowed at 54% a year → 1,635 × 0.54 / 12 ≈ 74 USDC interest a month.
+ * With Laya: placement fee refused, medical exam paid by the employer, training 190 + 3% fee = 195.70 owed.
+ */
+function WithoutWithLaya() {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>Without Laya vs with Laya</CardTitle>
+          <span className="text-xs text-muted-foreground">illustrative</span>
+        </div>
+        <CardDescription>Maria&apos;s three bills: training 190, medical exam 65, placement fee 1,380.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          <p className="font-semibold">Without Laya</p>
+          <p className="text-2xl font-bold tabular-nums">1,635 USDC</p>
+          <p>She borrows the whole amount, including the illegal placement fee.</p>
+          <p>At 54% a year, the interest alone is about <span className="font-semibold">74 USDC a month</span>, even in months she earns nothing.</p>
+        </div>
+        <div className="space-y-1 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+          <p className="font-semibold">With Laya</p>
+          <p className="text-2xl font-bold tabular-nums">195.70 USDC</p>
+          <p>The placement fee is refused. The employer pays the medical exam.</p>
+          <p>She owes only the training plus a 3% fee, repaid from what she sends home, and <span className="font-semibold">paused when she sends nothing</span>.</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
