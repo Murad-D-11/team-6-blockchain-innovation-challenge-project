@@ -8,6 +8,7 @@ import { useLaya } from "@/lib/hooks/useLaya";
 export function LatestReceipts() {
   const client = useLaya();
   const [ids, setIds] = useState<number[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,14 +22,26 @@ export function LatestReceipts() {
             .slice(0, 2)
             .map((r) => r.id),
         );
+        setLoaded(true);
       })
       .catch(() => {
-        if (!cancelled) setIds([]);
+        if (cancelled) return;
+        setIds([]);
+        setLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [client]);
+
+  if (!loaded) {
+    return (
+      <li>
+        <span className="font-medium">Loading receipts…</span>
+        <span className="block text-sm text-muted-foreground">Reading the latest funded requests from Stellar</span>
+      </li>
+    );
+  }
 
   if (ids.length === 0) {
     return (
