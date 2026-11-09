@@ -210,20 +210,26 @@ function BillsForm() {
           </CardContent>
         </Card>
 
-        {touched && (acceptedButIncomplete.length > 0 || ready.length === 0 || !familyOk) && (
+        {touched && ready.length > 0 && (acceptedButIncomplete.length > 0 || !familyOk) && (
           <ul className="list-inside list-disc rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             {acceptedButIncomplete.length > 0 && <li>Add the amount and invoice file for every accepted bill</li>}
-            {ready.length === 0 && acceptedButIncomplete.length === 0 && <li>There are no accepted bills to send</li>}
             {!familyOk && <li>Enter a valid family wallet address</li>}
           </ul>
         )}
 
         <p className="text-sm font-medium">Your signature is your consent to this request.</p>
-        <Button type="submit" size="lg" className="w-full" disabled={busy || rows.some((r) => r.hashing)}>
+        <Button type="submit" size="lg" className="w-full" disabled={busy || ready.length === 0 || rows.some((r) => r.hashing)}>
           {busy ? "Signing…" : ready.length > 0
             ? `Sign and send ${ready.length} ${ready.length === 1 ? "request" : "requests"}`
             : "Sign and send"}
         </Button>
+        {!busy && ready.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {pending.some((r) => !classify(r).blocksRequest)
+              ? "Add the amount and invoice file for an accepted bill to continue."
+              : "There are no accepted bills to send."}
+          </p>
+        )}
         {busy && <p className="text-sm text-muted-foreground" role="status">Waiting for signature and network… (one signature per bill)</p>}
         {submitError && <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700" role="alert">{submitError}</p>}
       </form>
