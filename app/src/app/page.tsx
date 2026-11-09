@@ -17,7 +17,7 @@ const demo: DemoLink[] = [
 // Rendered after the receipts, which sit between the Employer and Worker dashboard steps.
 const demoAfter: DemoLink[] = [
   { label: "Worker dashboard", note: "Send money home and see the repayment", href: "/worker?role=worker" },
-  { label: "Family", note: "Lorna's balance goes up" },
+  { label: "Family", note: "Lorna's balance goes up", href: "/family?role=family" },
   { label: "Admin", note: "Rulebook and verified providers", href: "/admin?role=admin" },
   { label: "Dev", note: "Run the whole flow on the mock", href: "/dev" },
 ];
