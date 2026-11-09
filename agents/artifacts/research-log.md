@@ -1,6 +1,6 @@
 # Solstice research log
 
-Working evidence for the [decision brief](solstice-research-decision-brief.md) and [PRD](solstice-prd.md). November 8, 2026. Record new evidence here before changing the PRD. An advertised product establishes a lead. A conversation can establish what a specific person says they would do. A real offer, observed workflow, or recorded demo establishes a different kind of proof.
+Working evidence for the [decision brief](solstice-research-decision.md) and [PRD](solstice-prd.md). November 8, 2026. Record new evidence here before changing the PRD. An advertised product establishes a lead. A conversation can establish what a specific person says they would do. A real offer, observed workflow, or recorded demo establishes a different kind of proof.
 
 ## Q1. Who puts up the 190?
 

@@ -37,6 +37,6 @@ Close with “Would you lead with sorting the bills or splitting the repayment? 
 
 Have a teammate who hasn’t seen the demo explain who got the 340, who got the 60, and what happened to the debt. The local checkout has provider, lender and receipt screens. Check teammate branches or a deployed preview for the worker screens before promising a full run. Once the whole flow is available, have a teammate check the actual Testnet payment and balance. If there’s time, try a payment from a wallet with too little test money and confirm that both recipient balances and the debt stay the same. Use the successful run for the video.
 
-[Challenge brief](../context/challenge-brief.md) · [Research verdict](old-project-research-loop.md) · [Existing failure test](../../contracts/laya/src/test.rs)
+[Challenge brief](../context/challenge-brief.md) · [Research verdict](solstice-research-decision.md) · [Existing failure test](../../contracts/laya/src/test.rs)
 
 **Pre-meeting check:** The simulated run passed, including the 340/60 split and the debt going from 195.70 to 135.70. The read-only check of the live test network returned an error before it could verify the contract. Use the paper example or label the simulation clearly if you show it today.

@@ -2,7 +2,7 @@
 
 Draft for product discussion. The prompts are for the team to answer in its own words. Example decisions remain proposed until the team agrees. Use role descriptions for ownership.
 
-The goal is to agree on what the product should do and what the prototype can prove, so the one-pager and Devpost tell the same defensible story. The [challenge brief](../context/challenge-brief.md) holds organizer requirements. The [Top 16 submission plan](../context/top-16-submission-plan.md) holds deadlines, packaging and submission checks.
+The goal is to agree on what the product should do and what the prototype can prove, so the one-pager and Devpost tell the same defensible story. The [challenge brief](../../context/challenge-brief.md) holds organizer requirements. The [Top 16 submission plan](../../context/top-16-submission-plan.md) holds deadlines, packaging and submission checks.
 
 ## 1. User and current problem
 
@@ -35,7 +35,7 @@ Start with direct payment to the provider, repayment through Solstice remittance
 
 For each proposed must-have, capture **user-visible behavior, priority, acceptance check, proof status, and evidence link**. Keep the list small and state what gets cut first.
 
-Example acceptance check: a single Testnet remittance makes both expected transfers and updates the loan balance. Record the tested deployment, date and transaction when verified. Track proof separately from agreement on scope. See [pitch context](../context/pitch-context.md) for the current demo assumptions.
+Example acceptance check: a single Testnet remittance makes both expected transfers and updates the loan balance. Record the tested deployment, date and transaction when verified. Track proof separately from agreement on scope. See [pitch context](../../context/pitch-context.md) for the current demo assumptions.
 
 ## 5. Open risks and next tests
 
@@ -45,7 +45,7 @@ Start with whether a lender would fund the invoice and whether the worker would 
 
 ## 6. Rubric review
 
-For each published criterion, link the product decisions that matter, record the evidence available today, and identify the largest gap. Use this as a review of the PRD and a guide to what the submission should communicate. The exact Top 16 screening method is unconfirmed. [Challenge brief](../context/challenge-brief.md)
+For each published criterion, link the product decisions that matter, record the evidence available today, and identify the largest gap. Use this as a review of the PRD and a guide to what the submission should communicate. The exact Top 16 screening method is unconfirmed. [Challenge brief](../../context/challenge-brief.md)
 
 ### Business Impact and Relevance (37.5%)
 
