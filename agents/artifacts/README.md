@@ -6,6 +6,10 @@ When the team approves material for future sessions, move it to [context](../con
 
 ## Active
 
+- [Solstice pivot decision](solstice-pivot-decision.md) for the contest decision, product alternatives and what would change the call.
+- [Devpost production runbook](solstice-devpost-production.md) for the current checks, recording handoff and repeatable agent review.
+- [Devpost entry draft](solstice-devpost-draft.md) for submission copy and evidence fields.
+- [One-minute video script](solstice-video-script.md) for narration, shots and capture checks.
 - [Alternatives comparison](solstice-alternatives-comparison.md) for pitch prep and judge questions.
 - [Advisor meeting brief](solstice-advisor-meeting.md) for the meeting questions and demo checks.
 - [Research decision](solstice-research-decision.md) for the current recommendation and next checks.
