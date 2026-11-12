@@ -7,6 +7,8 @@ For pitch work, keep the confirmed challenge rules, agreed demo flow, and eviden
 ## Documents
 
 - [How Solstice works](core-flow.md) for the three-step flow. Start here before reviewing the pitch or requirements.
+- [Solstice pitch foundations](solstice-pitch-foundations.md) for the one-liner, problem, solution, insight, and what to show in the demo.
+- [Solstice pitch evidence](solstice-pitch-evidence.md) for sourced claims, existing alternatives, and what still needs validation.
 - [Solstice pitch context](pitch-context.md) for the product story, planned demo, and rehearsal questions.
 - [Challenge brief](challenge-brief.md) for organizer requirements, judging criteria, and deadlines.
 - [Top 16 submission plan](top-16-submission-plan.md) for preparing the one-pager, Devpost entry, and Testnet demo.

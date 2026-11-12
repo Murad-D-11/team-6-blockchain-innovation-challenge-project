@@ -12,14 +12,14 @@ Aim to submit **Thursday, November 12 by 6 p.m. EST**. Devpost closes **Friday, 
 ## Who does what
 
 - [ ] **Build owner · Prove it works.** Use the intended deployed build with mock mode off and synthetic invoices. Use the funded Testnet wallets assigned to each role. In Freighter, use separate browser profiles or switch accounts and reconnect. Check the family address and 15% share. Capture the funding and remittance links and open the public receipt signed out.
-- [ ] **Repo owner · Write the README now.** Include prerequisites, setup, start commands, Testnet configuration, and how a judge can check the 400-unit example. Mark steps that require team wallets. Have someone follow the instructions from a fresh checkout.
+- [ ] **Repo owner · Verify the README.** Include prerequisites, setup, start commands, Testnet configuration, and how a judge can check the 400-unit example. Mark steps that require team wallets. Have someone follow the instructions from a fresh checkout.
 - [ ] **Video owner · Rehearse and record.** Time the script aloud. For a fresh run, capture the request, funding, split and proof from the same loan. If signing is unavailable, label the current app footage and historical proof separately. Cut wallet waits and keep the numbers readable.
 - [ ] **Submitter · Check access now.** Open the event draft and confirm team access, required fields and who can make the repo public. When the links are ready, open the app, Solstice receipt, Stellar transaction, video and public repo signed out. Check video playback from Devpost and scan public assets for credentials or personal data. Submit, confirm Devpost says **Submitted**, and save the confirmation.
 
 ## If the demo breaks
 
 1. **Bill sorting breaks?** Fix and rerun the intake flow. If it remains blocked, show the working training path and describe only the steps visible in the recording.
-2. **Fresh Testnet signing unavailable?** Use the labeled walkthrough and historical proof described in the script. Keep the deployed contract ID available for the submission.
+2. **Fresh Testnet signing unavailable?** Prepare the labeled walkthrough and historical proof described in the script as contingency footage. Organizer acceptance of that cut is unconfirmed. The Devpost entry still requires a functional Testnet deployment.
 
 ## What’s verified so far
 
