@@ -98,7 +98,7 @@ export default function DevPage() {
       <div className="space-y-5 text-sm">
       {!mock && <p className="text-red-600">Not running on the mock (NEXT_PUBLIC_USE_MOCK is not &quot;true&quot;).</p>}
       <p>
-        Acting as: <b>{role}</b> · training request/loan: {training ?? "none"} · medical request/loan: {medical ?? "none"}
+        Acting as <b>{role}</b>. Training request or loan: {training ?? "none"}. Medical request or loan: {medical ?? "none"}.
       </p>
       <p>
         Worker owes: training <b>{owed.training ?? "-"}</b> USDC · medical <b>{owed.medical ?? "-"}</b> USDC

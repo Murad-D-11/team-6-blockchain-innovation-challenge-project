@@ -136,7 +136,14 @@ function BillsForm() {
     e.preventDefault();
     setTouched(true);
     setSubmitError(null);
-    if (!familyOk || ready.length === 0 || acceptedButIncomplete.length > 0) return;
+    if (!familyOk || ready.length === 0 || acceptedButIncomplete.length > 0) {
+      const form = e.currentTarget as HTMLFormElement;
+      acceptedButIncomplete.forEach(({ key }) => {
+        const row = form.querySelector<HTMLDetailsElement>(`#bill-${key}`);
+        if (row) row.open = true;
+      });
+      return;
+    }
     setBusy(true);
     try {
       // One request per accepted bill, in list order (training first, so it is request 1 in the demo).
@@ -175,13 +182,21 @@ function BillsForm() {
   return (
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]" autoComplete="off">
-        <section aria-label="Bills" className="min-w-0 space-y-4">
-          {rows.map((r, i) => (
-            <BillRow key={r.key} row={r} index={i} touched={touched}
-              onChange={(patch) => update(r.key, patch)} onFile={(f) => onFile(r.key, f)}
-              onRemove={rows.length > 1 && !r.sent ? () => setRows((rs) => rs.filter((x) => x.key !== r.key)) : undefined} />
-          ))}
-          <Button type="button" variant="outline" className="min-h-11 w-full border-dashed" onClick={addRow}>+ Add another bill</Button>
+        <section aria-labelledby="bill-list" className="register-sheet">
+          <div className="border-b border-border px-4 py-3 sm:px-6">
+            <h2 id="bill-list" className="text-lg font-semibold">Bills <span className="ml-2 text-sm font-normal text-muted-foreground">{rows.length}</span></h2>
+            <p className="text-sm text-muted-foreground">Open a bill to add invoice details.</p>
+          </div>
+          <div className="divide-y divide-border border-b border-border">
+            {rows.map((r, i) => (
+              <BillRow key={r.key} row={r} index={i} touched={touched}
+                onChange={(patch) => update(r.key, patch)} onFile={(f) => onFile(r.key, f)}
+                onRemove={rows.length > 1 && !r.sent ? () => setRows((rs) => rs.filter((x) => x.key !== r.key)) : undefined} />
+            ))}
+          </div>
+          <div className="px-4 py-3 sm:px-6">
+            <Button type="button" variant="outline" onClick={addRow}>Add another bill</Button>
+          </div>
         </section>
 
         <section aria-label="Repayment and submission" className="min-w-0 space-y-4 lg:sticky lg:top-5">
@@ -307,13 +322,15 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
   const id = `bill-${row.key}`;
 
   return (
-    <Card className={c.payer === "prohibited" ? "border-red-300" : undefined}>
-      <CardHeader className="flex-row items-center justify-between">
-        <CardTitle>{BILL_TYPES.find(({ value }) => value === row.billType)?.label ?? `Bill ${index + 1}`}</CardTitle>
-        {onRemove && <Button type="button" variant="ghost" size="sm" aria-label={`Remove bill ${index + 1}`} onClick={onRemove}>Remove</Button>}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Verdict c={c} />
+    <details id={id} className="invoice-item" open={row.key > 3}>
+      <summary className="grid min-h-14 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 hover:bg-secondary sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:px-6">
+        <span className="text-lg font-semibold">{BILL_TYPES.find(({ value }) => value === row.billType)?.label ?? `Bill ${index + 1}`}</span>
+        <span className="invoice-marker row-span-2 mx-1 text-muted-foreground sm:col-start-3 sm:row-span-1" aria-hidden="true" />
+        <span className="col-start-1 row-start-2 text-sm text-muted-foreground sm:col-start-2 sm:row-start-1" aria-live="polite">
+          {row.sent ? `Request #${row.sent.requestId} sent` : PAYER_LABEL[c.payer]}
+        </span>
+      </summary>
+      <div className="space-y-4 border-t border-border px-4 py-4 sm:px-6">
         {row.sent ? (
           <div className="space-y-1 text-sm">
             <p>{c.rule?.label ?? "Bill"} · {provider.name} · {row.amount} USDC</p>
@@ -366,34 +383,31 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+        <Verdict c={c} />
+        {onRemove && <Button type="button" variant="ghost" size="sm" aria-label={`Remove bill ${index + 1}`} onClick={onRemove}>Remove bill</Button>}
+      </div>
+    </details>
   );
 }
 
+const PAYER_LABEL = {
+  employer: "Employer can pay",
+  worker: "Eligible for financing",
+  prohibited: "Ineligible for payment",
+  needs_review: "Needs review before submission",
+};
+
 /** The funder's-policy result for one bill: who pays it, why, and the source. */
 function Verdict({ c }: { c: Classification }) {
-  const style = {
-    employer: "border-emerald-200 bg-emerald-50 text-emerald-900",
-    worker: "border-blue-200 bg-blue-50 text-blue-900",
-    prohibited: "border-red-300 bg-red-50 text-red-900",
-    needs_review: "border-amber-200 bg-amber-50 text-amber-900",
-  }[c.payer];
-  const headline = {
-    employer: "Employer can pay · You owe 0",
-    worker: "Eligible for financing",
-    prohibited: "Ineligible for payment",
-    needs_review: "Needs review before submission",
-  }[c.payer];
-
   return (
-    <div className={`space-y-1 rounded-md border-l-2 p-3 text-sm ${style}`}>
-      <p className="font-semibold" aria-live="polite">{headline}</p>
+    <div className="space-y-1 border-l-2 border-foreground pl-3 text-sm text-muted-foreground">
+      {c.payer === "employer" && <p className="font-semibold text-foreground">You owe 0</p>}
       <p>{c.reason}</p>
       {c.rule && (
-        <a href={c.rule.sourceUrl} target="_blank" rel="noreferrer" className="inline-block underline underline-offset-2">
-          Source: {c.rule.sourceLabel}
-        </a>
+        <p>
+          <a href={c.rule.sourceUrl} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-2">Policy source</a>
+          {" "}({c.rule.sourceLabel})
+        </p>
       )}
       {c.rule?.capUsd !== undefined && c.payer !== "prohibited" && (
         <p className="text-xs opacity-80">Illustrative demo cap: {c.rule.capUsd} USDC (not an official price cap).</p>

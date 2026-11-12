@@ -118,7 +118,7 @@ function Funding({ role }: { role: FunderRole }) {
                       <p>Estimated repayment: {r.shareBps > 0 && Number.isSafeInteger(feeBps) && feeBps >= 0 && feeBps <= 800 ? ((r.legalAmount * BigInt(10000 + feeBps) / 10000n + (4000000000n * BigInt(r.shareBps) / 10000n) - 1n) / (4000000000n * BigInt(r.shareBps) / 10000n)).toString() : "—"} remittances of 400 USDC, assuming the same share each time.</p>
                     </>
                   ) : (
-                    <p>Grant · fee 0 · worker owes 0</p>
+                    <p>Grant with zero fees. The worker owes 0.</p>
                   )}
                   <Button disabled={tx.busy} onClick={() => void fund(r.id)}>
                     {tx.busy ? "Submitting…" : role === "employer" ? "Pay as employer" : "Fund loan"}

@@ -16,8 +16,8 @@ export function AmountDisplay({
   const usd = { sm: "text-base", md: "text-xl", lg: "text-3xl" }[size];
   return (
     <div className={cn("leading-tight", className)}>
-      <div className={cn("font-semibold tabular-nums", usd)}>
-        {formatUsd(units)} <span className="text-xs font-normal text-muted-foreground">test USDC</span>
+      <div className={cn("register-figure font-medium", usd)}>
+        {formatUsd(units)} <span className="font-sans text-xs font-normal text-muted-foreground">test USDC</span>
       </div>
       {showPhp && (
         <div className="text-xs text-muted-foreground tabular-nums">

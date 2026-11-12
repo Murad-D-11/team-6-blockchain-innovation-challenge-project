@@ -82,16 +82,17 @@ function Receipt({ id }: { id: string }) {
       {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {!request && !error && <p role="status" className="text-sm text-muted-foreground">Loading receipt…</p>}
       {request && (
-        <article className="overflow-hidden rounded-lg border border-border bg-card">
+        <article className="register-sheet">
           <Settlement request={request} loan={loan} />
-          <section className="border-t border-border p-5 sm:p-7" aria-labelledby="activity">
+          <div className="grid border-t-2 border-foreground sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <section className="p-5 sm:p-6" aria-labelledby="activity">
             <h2 id="activity" className="text-lg font-semibold tracking-tight">Activity</h2>
             {eventsError ? <p className="mt-2 text-sm text-muted-foreground">Activity is unavailable. Refresh to try again.</p>
               : !events ? <p role="status" className="mt-2 text-sm text-muted-foreground">Loading activity…</p>
               : events.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No activity is available for this request.</p>
               : <ol className="mt-2 divide-y divide-border">
                 {events.map((event, index) => (
-                  <li key={index} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
+                  <li key={index} className="space-y-1 py-3 text-sm">
                     <div>
                       <p className="font-medium">{EVENT_LABEL[event.type]}</p>
                       <time className="text-muted-foreground" dateTime={new Date(event.timestamp * 1000).toISOString()}>{dateTime.format(event.timestamp * 1000)}</time>
@@ -101,7 +102,7 @@ function Receipt({ id }: { id: string }) {
                 ))}
               </ol>}
           </section>
-          <section className="space-y-3 border-t border-border p-5 text-sm sm:p-7" aria-labelledby="verify-receipt">
+          <section className="space-y-3 border-t border-border p-5 text-sm sm:border-t-0 sm:border-l sm:p-6" aria-labelledby="verify-receipt">
             <h2 id="verify-receipt" className="text-lg font-semibold tracking-tight">Verify this receipt</h2>
             <p className="text-muted-foreground">Compare your invoice with the fingerprint recorded for this request. A match shows the file is unchanged since submission. Provider confirmation and payment are recorded separately.</p>
             <Verify hash={request.docHash} />
@@ -115,6 +116,7 @@ function Receipt({ id }: { id: string }) {
               </ul>
             </details>
           </section>
+          </div>
         </article>
       )}
     </PageShell>
@@ -130,18 +132,19 @@ function Settlement({ request, loan }: { request: PayoffRequest; loan: Loan | nu
       <header className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-7">
         <div className="min-w-0">
           <h2 className="text-2xl font-semibold tracking-tight">{classification.rule?.label ?? "Bill requires review"}</h2>
-          <p className="mt-1 text-sm wrap-anywhere text-muted-foreground">{billProvider?.name ?? request.creditor}{billProvider?.regNo && ` · ${billProvider.regNo}`}</p>
+          <p className="mt-1 text-sm wrap-anywhere text-muted-foreground">{billProvider?.name ?? request.creditor}</p>
+          {billProvider?.regNo && <p className="text-sm text-muted-foreground">Registration {billProvider.regNo}</p>}
         </div>
         <StatusBadge status={request.status} />
       </header>
-      <dl className="grid gap-4 border-y border-border bg-secondary/60 p-5 sm:grid-cols-2 sm:p-7">
-        <div>
-          <dt className="mb-1 text-sm text-muted-foreground">{loan ? "Provider paid" : "Invoice amount"}</dt>
-          <dd><AmountDisplay units={loan?.legalAmount ?? request.legalAmount} size="lg" /></dd>
+      <dl className="mx-5 divide-y divide-border border-y border-foreground sm:mx-7">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 py-3">
+          <dt className="text-sm text-muted-foreground">{loan ? "Provider paid" : "Invoice amount"}</dt>
+          <dd className="text-right"><AmountDisplay units={loan?.legalAmount ?? request.legalAmount} size="md" /></dd>
         </div>
-        {loan && <div>
-          <dt className="mb-1 text-sm text-muted-foreground">Worker owes now</dt>
-          <dd><AmountDisplay units={loan.outstanding} size="lg" /></dd>
+        {loan && <div className="grid items-baseline gap-1 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-2">
+          <dt className="font-semibold">Worker owes now</dt>
+          <dd className="sm:text-right"><AmountDisplay units={loan.outstanding} size="lg" /></dd>
         </div>}
       </dl>
       <dl className="divide-y divide-border px-5 text-sm sm:px-7">

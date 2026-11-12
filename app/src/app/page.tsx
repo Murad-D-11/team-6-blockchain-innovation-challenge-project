@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { LatestReceipts } from "./LatestReceipts";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const demoRoles = [
   { label: "Submit bills", role: "Worker", href: "/worker/request?role=worker" },
@@ -13,69 +14,80 @@ const demoRoles = [
   { label: "Manage provider approvals", role: "Admin", href: "/admin?role=admin" },
 ];
 
+const sampleBills = [
+  { name: "Training", amount: "190 USDC", decision: "Eligible for financing" },
+  { name: "Medical exam", amount: "65 USDC", decision: "Employer can cover the full bill" },
+  { name: "Placement fee", amount: null, decision: "Outside the demo funding policy" },
+];
+
 export default function Home() {
   return (
     <>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:z-20 focus:bg-card focus:p-3">Skip to content</a>
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-8">
-          <span translate="no" className="text-xl font-bold tracking-[-0.055em]">Solstice</span>
-          <Link href="/dev" className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary">Demo runner</Link>
+      <header className="masthead">
+        <div className="mx-auto flex min-h-15 max-w-6xl items-center justify-between gap-3 px-4 sm:px-8">
+          <span translate="no" className="text-2xl font-semibold tracking-tight">Solstice</span>
+          <Link href="/dev" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4 hover:no-underline">Demo runner</Link>
         </div>
       </header>
-      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-8">
-        <section className="grid items-center gap-8 border-b border-border py-9 sm:py-14 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
-          <div>
-            <h1 className="max-w-2xl text-[clamp(2.6rem,6vw,5.25rem)] leading-[0.98] font-semibold tracking-[-0.065em]">Know who pays before you leave.</h1>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-              See which pre-departure bills your employer can cover and which may qualify for financing. Track what was paid and what you still owe.
-            </p>
-            <Link href="/worker/request?role=worker" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-              Start with your bills <ArrowUpRight size={17} aria-hidden="true" />
-            </Link>
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 pt-6 pb-14 sm:px-8 sm:pt-12">
+        <section className="register-sheet lg:grid lg:min-h-[650px] lg:grid-rows-[1fr_auto]" aria-labelledby="bill-register">
+          <div className="flex flex-wrap items-end justify-between gap-5 px-4 pt-6 pb-5 sm:px-9 sm:pt-9 sm:pb-8 lg:items-center">
+            <div>
+              <h1 id="bill-register" className="register-heading font-semibold">Know who pays<br className="hidden sm:block" /> before you leave.</h1>
+              <p className="editorial-copy mt-3">Check which bills your employer can cover and which qualify for financing.</p>
+            </div>
+            <Link href="/worker/request?role=worker" className={cn(buttonVariants({ size: "lg" }), "shrink-0")}>Start with your bills</Link>
           </div>
-          <figure className="overflow-hidden rounded-lg bg-[#193a31] text-[#f6faf3]">
-            <figcaption className="border-b border-white/20 px-5 py-4 font-semibold sm:px-6">Example bill breakdown</figcaption>
-            <dl className="divide-y divide-white/20 px-5 text-sm sm:px-6">
-              <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 py-4">
-                <dt className="font-semibold">Training</dt><dd className="text-right font-semibold tabular-nums">190 USDC</dd>
-                <dd className="col-span-2 text-[#cee0d4]">Eligible for financing in this demo</dd>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 py-4">
-                <dt className="font-semibold">Medical exam</dt><dd className="text-right font-semibold tabular-nums">65 USDC</dd>
-                <dd className="col-span-2 text-[#cee0d4]">Employer can cover the full bill</dd>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 py-4">
-                <dt className="font-semibold">Placement fee</dt><dd className="text-right font-medium">Ineligible</dd>
-                <dd className="col-span-2 text-[#cee0d4]">Outside the demo funding policy</dd>
-              </div>
-            </dl>
-          </figure>
+          <div className="px-4 pb-5 sm:px-9 sm:pb-8 lg:pb-12">
+            <table className="w-full table-fixed border-collapse text-left">
+              <caption className="register-label border-b-2 border-foreground pb-2 text-left text-lg font-semibold">Example bill breakdown</caption>
+              <thead className="register-label text-base text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th scope="col" className="w-[37%] py-2 pr-2 font-medium">Bill</th>
+                  <th scope="col" className="w-[37%] py-2 pr-2 font-medium sm:w-auto">Payment decision</th>
+                  <th scope="col" className="py-2 text-right font-medium sm:w-32">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sampleBills.map(({ name, amount, decision }) => (
+                  <tr key={name} className="border-b border-border align-top">
+                    <th scope="row" className="register-label py-3 pr-2 text-lg font-semibold leading-tight lg:py-5">{name}</th>
+                    <td className="py-3 pr-2 text-sm leading-snug sm:text-base lg:py-5">{decision}</td>
+                    <td className="register-figure py-3 text-right text-sm lg:py-5">{amount ?? <span className="font-sans">None</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <div className="grid gap-8 pt-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
+        <div className="mt-9 grid gap-8 lg:mt-32 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-12">
           <section aria-labelledby="demo-roles">
-            <h2 id="demo-roles" className="text-2xl font-semibold tracking-tight">Walk through the demo</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Fictional invoices and test USDC. Role links switch accounts in mock mode.</p>
-            <ol className="mt-4 divide-y divide-border border-y border-border">
+            <h2 id="demo-roles" className="border-b-2 border-foreground pb-2 text-2xl font-semibold tracking-tight lg:text-[length:var(--text-section)]">Walk through the demo</h2>
+            <p className="py-2 text-sm text-muted-foreground">Role links switch accounts in mock mode.</p>
+            <ol className="divide-y divide-border border-b border-border">
               {demoRoles.map(({ label, role, href }) => (
                 <li key={href}>
-                  <Link href={href} className="grid min-h-13 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-2 py-2 text-sm hover:bg-secondary">
-                    <span className="font-semibold">{label}</span>
-                    <span className="text-right text-xs text-muted-foreground sm:text-sm">{role}</span>
-                    <ArrowUpRight size={16} aria-hidden="true" />
+                  <Link href={href} className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1 py-2 hover:bg-card">
+                    <span className="font-semibold underline decoration-border underline-offset-4">{label}</span>
+                    <span className="text-right text-sm text-muted-foreground">{role}</span>
                   </Link>
                 </li>
               ))}
             </ol>
           </section>
           <section aria-labelledby="demo-receipts">
-            <h2 id="demo-receipts" className="text-2xl font-semibold tracking-tight">Public receipts</h2>
-            <ul className="mt-4 divide-y divide-border rounded-lg border border-border bg-card [&>li]:px-4 [&>li]:py-3">
+            <h2 id="demo-receipts" className="border-b-2 border-foreground pb-2 text-2xl font-semibold tracking-tight lg:text-[length:var(--text-section)]">Public receipts</h2>
+            <p className="py-2 text-sm text-muted-foreground">Track what was paid and what the worker still owes.</p>
+            <ul className="divide-y divide-border border-b border-border [&>li]:py-3">
               <LatestReceipts />
             </ul>
           </section>
         </div>
+        <footer className="mt-10 border-t border-border py-4 text-sm text-muted-foreground lg:mt-36">
+          Fictional invoices and test USDC.
+        </footer>
       </main>
     </>
   );
