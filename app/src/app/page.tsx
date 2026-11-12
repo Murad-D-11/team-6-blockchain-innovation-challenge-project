@@ -43,7 +43,6 @@ export default function Home() {
       <header className="masthead">
         <div className="mx-auto flex min-h-15 max-w-6xl items-center justify-between gap-3 px-4 sm:px-8">
           <span translate="no" className="text-2xl font-semibold tracking-tight">Solstice</span>
-          <Link href="/dev" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4 hover:no-underline">Demo runner</Link>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 pt-6 pb-14 sm:px-8 sm:pt-12">
