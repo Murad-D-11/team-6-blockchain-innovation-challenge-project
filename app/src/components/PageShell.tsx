@@ -36,10 +36,12 @@ export function PageShell({ title, subtitle, children, wide = false, publicView 
           <div className="flex items-center gap-2 text-xs">
             <Badge className="rounded-sm border-current bg-transparent text-inherit">{IS_MOCK ? "Mock demo" : "Stellar Testnet"}</Badge>
             {!publicView && mounted && address ? (
-              <span className="flex flex-col items-end leading-tight">
-                <span className="font-semibold">{ROLE_LABEL[role]}</span>
-                <span className="font-mono opacity-80">{shortAddress(address)}</span>
-              </span>
+              <details className="relative">
+                <summary className="cursor-pointer font-semibold">{ROLE_LABEL[role]} wallet</summary>
+                <p className="masthead absolute right-0 z-10 mt-2 border border-current p-2 font-mono">
+                  <span className="sr-only">Wallet address </span>{shortAddress(address)}
+                </p>
+              </details>
             ) : !publicView && mounted ? (
               <Button size="sm" onClick={() => laya.connect().catch((e) => setError(errorText(e)))}>Connect wallet</Button>
             ) : null}

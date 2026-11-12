@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { usePoll } from "@/components/hooks";
 import { PageShell } from "@/components/PageShell";
 import { PROVIDERS, providerName, RULES, SAMPLE_INVOICES } from "@/components/demoData";
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input, Select, Slider } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { errorText } from "@/components/errors";
-import { isValidAccount, shortAddress } from "@/lib/address";
+import { isValidAccount } from "@/lib/address";
 import config from "@/lib/config";
 import { MAX_SHARE_BPS, MIN_SHARE_BPS } from "@/lib/formulas";
 import { hashFile } from "@/lib/hash";
@@ -27,9 +27,9 @@ import { formatPhp, fromUnits, toUnits } from "@/lib/units";
 const MONTHS = 12; // v2: months no longer changes any amount; fixed and not shown
 
 const BILL_TYPES: { value: BillType; label: string }[] = [
-  { value: "training", label: "Training" },
+  { value: "training", label: "Hypothetical training bill" },
   { value: "medical_exam", label: "Medical exam" },
-  { value: "placement_fee", label: "Placement fee" },
+  { value: "placement_fee", label: "Philippine recruiter placement fee" },
   { value: "other", label: "Other" },
 ];
 
@@ -40,6 +40,7 @@ interface Row {
   amount: string;
   docHash: string | null;
   hashing: boolean;
+  fileError?: string;
   sent: { requestId: number; txHash: string } | null;
 }
 
@@ -73,7 +74,7 @@ function classify(row: Row): Classification {
 
 export default function WorkerRequestPage() {
   return (
-    <PageShell title="List your bills" subtitle="Check who can cover each bill, then send eligible invoices for the provider to confirm." wide>
+    <PageShell title="Check your bills" subtitle="See who can cover each charge, then send eligible bills for confirmation." wide>
       <RoleGuard role="worker">
         <BillsForm />
       </RoleGuard>
@@ -91,6 +92,7 @@ function BillsForm() {
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const fileSelections = useRef(new Map<number, File>());
 
   const [requests, setRequests] = useState<PayoffRequest[]>([]);
   const [listError, setListError] = useState<string | null>(null);
@@ -112,15 +114,28 @@ function BillsForm() {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   async function onFile(key: number, f: File | undefined) {
-    update(key, { docHash: null, hashing: !!f });
-    if (!f) return;
-    const h = await hashFile(f); // the file stays in the browser; only the fingerprint is used
-    update(key, { docHash: h, hashing: false });
+    update(key, { docHash: null, hashing: !!f, fileError: undefined });
+    if (!f) {
+      fileSelections.current.delete(key);
+      return;
+    }
+    fileSelections.current.set(key, f);
+    try {
+      const docHash = await hashFile(f);
+      if (fileSelections.current.get(key) === f) update(key, { docHash, hashing: false });
+    } catch {
+      if (fileSelections.current.get(key) === f) {
+        update(key, { hashing: false, fileError: "Could not read this file. Choose it again or select another invoice." });
+      }
+    } finally {
+      if (fileSelections.current.get(key) === f) fileSelections.current.delete(key);
+    }
   }
 
   function addRow() {
     setRows((rs) => [...rs, { key: nextKey, billType: "other", providerIdx: 0, amount: "", docHash: null, hashing: false, sent: null }]);
     setNextKey((k) => k + 1);
+    requestAnimationFrame(() => document.getElementById(`bill-${nextKey}-type`)?.focus());
   }
 
   const familyOk = isValidAccount(family.trim());
@@ -183,9 +198,12 @@ function BillsForm() {
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]" autoComplete="off">
         <section aria-labelledby="bill-list" className="register-sheet">
-          <div className="border-b border-border px-4 py-3 sm:px-6">
-            <h2 id="bill-list" className="text-lg font-semibold">Bills <span className="ml-2 text-sm font-normal text-muted-foreground">{rows.length}</span></h2>
-            <p className="text-sm text-muted-foreground">Open a bill to add invoice details.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
+            <div>
+              <h2 id="bill-list" className="text-xl font-semibold">Your bills</h2>
+              <p className="text-sm text-muted-foreground">Start with the fictional sample bills.</p>
+            </div>
+            <Button type="button" variant="outline" onClick={addRow}>Add a bill</Button>
           </div>
           <div className="divide-y divide-border border-b border-border">
             {rows.map((r, i) => (
@@ -193,9 +211,6 @@ function BillsForm() {
                 onChange={(patch) => update(r.key, patch)} onFile={(f) => onFile(r.key, f)}
                 onRemove={rows.length > 1 && !r.sent ? () => setRows((rs) => rs.filter((x) => x.key !== r.key)) : undefined} />
             ))}
-          </div>
-          <div className="px-4 py-3 sm:px-6">
-            <Button type="button" variant="outline" onClick={addRow}>Add another bill</Button>
           </div>
         </section>
 
@@ -217,14 +232,17 @@ function BillsForm() {
                   Send 400 home → {fromUnits((toUnits("400") * BigInt(shareBps)) / 10000n)} repays, the rest goes to your family. You can raise it later, never lower it.
                 </p>
               </div>
-              <div className="space-y-1.5">
+              <details open={touched && !familyOk} className="space-y-2 border-t border-border pt-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Payment details
+                </summary>
                 <Label htmlFor="family">Family wallet</Label>
                 <Input id="family" name="family-wallet" className="font-mono text-sm" value={family} spellCheck={false} aria-describedby="family-wallet-help"
                   aria-invalid={touched && !familyOk} onChange={(e) => setFamily(e.target.value)} />
                 <p id="family-wallet-help" className="text-xs text-muted-foreground">
                   {family.trim() === config.accounts.family ? "Lorna Santos (mother) · demo account" : familyOk ? "Valid address" : "Not a valid Stellar address"}
                 </p>
-              </div>
+              </details>
             </CardContent>
           </Card>
 
@@ -286,7 +304,6 @@ function BillsForm() {
                     {r.status === "Confirmed" && `provider confirmed · waiting for the ${c.payer === "employer" ? "employer" : "remittance partner (funder)"}`}
                     {r.status === "Funded" && "provider paid in full"}
                     {r.status === "Cancelled" && "cancelled"}
-                    {r.family !== config.accounts.family && ` · family ${shortAddress(r.family)}`}
                   </p>
                 </div>
                 <div className="flex gap-3">
@@ -322,11 +339,11 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
   const id = `bill-${row.key}`;
 
   return (
-    <details id={id} className="invoice-item" open={row.key > 3}>
+    <details id={id} className="invoice-item" open={row.key === 1 || row.key > 3}>
       <summary className="grid min-h-14 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 hover:bg-secondary sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:px-6">
         <span className="text-lg font-semibold">{BILL_TYPES.find(({ value }) => value === row.billType)?.label ?? `Bill ${index + 1}`}</span>
         <span className="invoice-marker row-span-2 mx-1 text-muted-foreground sm:col-start-3 sm:row-span-1" aria-hidden="true" />
-        <span className="col-start-1 row-start-2 text-sm text-muted-foreground sm:col-start-2 sm:row-start-1" aria-live="polite">
+        <span className="col-start-1 row-start-2 text-sm font-semibold sm:col-start-2 sm:row-start-1" aria-live="polite">
           {row.sent ? `Request #${row.sent.requestId} sent` : PAYER_LABEL[c.payer]}
         </span>
       </summary>
@@ -335,11 +352,36 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
           <div className="space-y-1 text-sm">
             <p>{c.rule?.label ?? "Bill"} · {provider.name} · {row.amount} USDC</p>
             <p className="font-medium text-emerald-800">Sent as request #{row.sent.requestId}</p>
-            <TxLink hash={row.sent.txHash} />
+            <details className="space-y-2">
+              <summary className="cursor-pointer font-medium">Transaction details</summary>
+              <TxLink hash={row.sent.txHash} />
+            </details>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            {!c.blocksRequest && (
+              <div className="space-y-2 border border-primary bg-card p-3 sm:p-4">
+                <Label htmlFor={`${id}-doc`} className="text-base font-semibold">Choose invoice PDF or photo</Label>
+                <Input id={`${id}-doc`} name={`${id}-invoice`} type="file" accept="application/pdf,image/*"
+                  className="h-auto py-2 text-sm file:cursor-pointer file:bg-primary file:px-3 file:py-2 file:text-primary-foreground"
+                  aria-describedby={`${id}-file-help`} aria-invalid={Boolean(row.fileError) || (touched && row.docHash === null)}
+                  onChange={(e) => onFile(e.target.files?.[0])} />
+                <p id={`${id}-file-help`} className="text-sm text-muted-foreground">
+                  Enter the bill details below. Solstice creates a fingerprint on this device. The invoice stays in your browser.
+                </p>
+                <p role="status" className="text-sm font-medium">
+                  {row.hashing && "Creating invoice fingerprint…"}
+                  {!row.hashing && row.docHash && <span className="motion-safe:animate-in motion-safe:fade-in">Invoice fingerprint created.</span>}
+                </p>
+                {row.fileError && <p role="alert" className="text-sm text-destructive">{row.fileError}</p>}
+                {!row.docHash && SAMPLE_INVOICES[row.billType] && (
+                  <a href={SAMPLE_INVOICES[row.billType]} download className="text-sm text-primary underline underline-offset-3 hover:text-foreground">
+                    Download the fictional sample invoice
+                  </a>
+                )}
+              </div>
+            )}
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
               <div className="space-y-1.5">
                 <Label htmlFor={`${id}-type`}>Bill type</Label>
                 <Select id={`${id}-type`} name={`${id}-type`} value={row.billType} onChange={(e) => onChange({ billType: e.target.value as BillType })}>
@@ -364,26 +406,9 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
               </Select>
               <p id={`${id}-registration`} className="text-xs text-muted-foreground">Registration {provider.regNo}</p>
             </div>
-            {!c.blocksRequest && (
-              <div className="space-y-1.5">
-                <Label htmlFor={`${id}-doc`}>Invoice file</Label>
-                <Input id={`${id}-doc`} name={`${id}-invoice`} type="file" accept="application/pdf,image/*" className="h-auto py-2 text-sm"
-                  aria-invalid={touched && row.docHash === null} onChange={(e) => onFile(e.target.files?.[0])} />
-                <p className="text-xs text-muted-foreground">
-                  {row.hashing ? "Making fingerprint…" : row.docHash
-                    ? <>Fingerprint <span className="font-mono">{row.docHash.slice(0, 12)}…</span> · the file never leaves your phone</>
-                    : "Only a fingerprint (SHA-256) is stored. The file never leaves your phone."}
-                </p>
-                {!row.docHash && SAMPLE_INVOICES[row.billType] && (
-                  <a href={SAMPLE_INVOICES[row.billType]} download className="text-xs text-primary underline underline-offset-3 hover:text-foreground">
-                    Download the fictional sample invoice
-                  </a>
-                )}
-              </div>
-            )}
           </>
         )}
-        <Verdict c={c} />
+        <Verdict c={c} amount={amount} />
         {onRemove && <Button type="button" variant="ghost" size="sm" aria-label={`Remove bill ${index + 1}`} onClick={onRemove}>Remove bill</Button>}
       </div>
     </details>
@@ -391,17 +416,23 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
 }
 
 const PAYER_LABEL = {
-  employer: "Employer can pay",
-  worker: "Eligible for financing",
-  prohibited: "Ineligible for payment",
-  needs_review: "Needs review before submission",
+  employer: "Employer covers the exam",
+  worker: "Eligible in this demo",
+  prohibited: "Payment blocked",
+  needs_review: "Needs review",
 };
 
 /** The funder's-policy result for one bill: who pays it, why, and the source. */
-function Verdict({ c }: { c: Classification }) {
+function Verdict({ c, amount }: { c: Classification; amount: bigint | null }) {
+  const outcome = {
+    employer: "Your share is 0 USDC",
+    worker: amount === null ? "You would repay the financed amount plus a fee" : `You would repay ${fromUnits(amount)} USDC plus a fee`,
+    prohibited: "Solstice blocks this charge",
+    needs_review: "This demo can’t submit this bill",
+  }[c.payer];
   return (
-    <div className="space-y-1 border-l-2 border-foreground pl-3 text-sm text-muted-foreground">
-      {c.payer === "employer" && <p className="font-semibold text-foreground">You owe 0</p>}
+    <div className="space-y-1 border-l-2 border-foreground bg-secondary px-3 py-2 text-sm text-muted-foreground">
+      <p className="text-base font-semibold text-foreground">{outcome}</p>
       <p>{c.reason}</p>
       {c.rule && (
         <p>

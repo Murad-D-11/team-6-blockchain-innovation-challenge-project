@@ -9,21 +9,21 @@ Working copy. Replace the bracketed fields with verified links and IDs before pa
 - **Built with** · Stellar, Soroban, Rust, Next.js, TypeScript
 
 - [One-minute prototype demo]([PUBLIC_VIDEO_URL])
-- [Open the Solstice receipt without a wallet]([PUBLIC_RECEIPT_URL]) and [check the Stellar transaction]([TESTNET_TRANSACTION_URL])
+- [Open the Solstice receipt without a wallet]([PUBLIC_RECEIPT_URL]) and [check the historical Stellar transaction](https://stellar.expert/explorer/testnet/tx/0e07bb9956d1e4fb301fc841b1838216da8b958b31fc071ec88423395daf22bf)
 - [Open the Stellar Testnet app]([PUBLIC_APP_URL])
 - [Source and setup instructions]([PUBLIC_REPOSITORY_URL])
-- **Testnet contract** · `[VERIFIED_CONTRACT_ID]`
+- **Testnet contract** · `CCQ2LMIEGRCWT5YV4DPCR2VGNP76DVYVPD5KJMCFJILZ7FMX37LL4KS3`
 
 ### Who it serves
 
-Maria is a fictional Filipino domestic worker preparing to work in Hong Kong. Her first paycheck is weeks away, but a training invoice is due now. Before she borrows, she needs to know which bills are hers to pay and what a loan would cost. After she starts earning, she needs to send money home while paying down that debt.
+Maria is a fictional Filipino domestic worker preparing to work in Hong Kong. Bills arrive before her first paycheck. Checking who owes each bill before offering credit could reduce what she needs to borrow.
 
 Solstice is designed to help Filipino domestic workers heading to Hong Kong sort pre-departure bills before borrowing, pay providers directly, and repay eligible financing through a chosen share of remittances sent through the app.
 
 ### How it works
 
-1. **Request financing.** Maria enters a fictional training bill and submits a request to have the provider paid directly.
-2. **Pay the provider.** The school confirms a training invoice for 190 test units. A lender pays the school directly. The illustrative 3% flat fee adds 5.70, bringing the total owed to 195.70.
+1. **Review the bills.** Maria enters the details. The demo routes the medical exam to the employer, refuses a Philippine recruiter’s placement fee, and offers financing for a hypothetical worker-payable training bill.
+2. **Pay the provider.** The school confirms the submitted amount of 190 test units. A lender pays the school directly. The illustrative 3% flat fee adds 5.70, bringing the total owed to 195.70.
 3. **Send money home and pay down the loan.** With her repayment share set to 15%, Maria sends 400 test units through Solstice. Her family gets 340, the lender gets 60, and her outstanding balance drops to 135.70. The fee sets the cost of this example loan. The repayment share sets how much of a transfer goes toward the balance.
 
 ### Why Stellar
@@ -36,7 +36,7 @@ The prototype uses fictional invoices, demo accounts and Testnet funds. Open the
 
 ### What we learned
 
-In simulation, a 400-unit transfer at 15% produced a 340 family payout, a 60 lender payment and 135.70 still owed. We still need feedback from the workers this is designed for. Our next usability check asks a participant to predict the family payout, lender payment and remaining balance before confirming a transfer. We’ll use what they get stuck on to revise the screen and retest it.
+Historical Testnet loan #13 recorded the 340 family payout, 60 lender payment and 135.70 outstanding. We still need feedback from the workers this is designed for. Our next usability check asks a participant to predict the family payout, lender payment and remaining balance before confirming a transfer. We’ll use what they get stuck on to revise the screen and retest it.
 
 ### What we would test next
 

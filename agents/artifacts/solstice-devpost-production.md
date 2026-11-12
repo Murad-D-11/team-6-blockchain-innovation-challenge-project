@@ -1,6 +1,6 @@
 # Solstice Devpost: what to do next
 
-**Drafts ready. Live payment still unverified.** First, fund Maria’s fictional 190-unit training bill on Testnet. Then send 400 total with 15% going to the loan. Save the Stellar transaction showing **340 to family and 60 to the lender**, plus the Solstice receipt showing **135.70 still owed**. Once that works, record it and put the verified links into Devpost.
+**Historical Testnet payment verified.** Loan #13 paid 190 test USDC to the provider, then split 400 into **340 to family and 60 to the lender**, leaving **135.70 owed**. Use the one-minute script for a fresh signed run or a labeled mock walkthrough with the historical proof. [Verified remittance](https://stellar.expert/explorer/testnet/tx/0e07bb9956d1e4fb301fc841b1838216da8b958b31fc071ec88423395daf22bf)
 
 - **Building?** Follow the checklist below.
 - **Recording?** Use the [one-minute script](solstice-video-script.md).
@@ -13,18 +13,17 @@ Aim to submit **Thursday, November 12 by 6 p.m. EST**. Devpost closes **Friday, 
 
 - [ ] **Build owner · Prove it works.** Use the intended deployed build with mock mode off and synthetic invoices. Use the funded Testnet wallets assigned to each role. In Freighter, use separate browser profiles or switch accounts and reconnect. Check the family address and 15% share. Capture the funding and remittance links and open the public receipt signed out.
 - [ ] **Repo owner · Write the README now.** Include prerequisites, setup, start commands, Testnet configuration, and how a judge can check the 400-unit example. Mark steps that require team wallets. Have someone follow the instructions from a fresh checkout.
-- [ ] **Video owner · Rehearse now, record after the live run.** Time the script aloud. Capture the request, funding, split and proof from the same loan. Cut wallet waits and keep the numbers readable. Check for the older Laya name and inaccurate “only the principal” copy before choosing the shots.
+- [ ] **Video owner · Rehearse and record.** Time the script aloud. For a fresh run, capture the request, funding, split and proof from the same loan. If signing is unavailable, label the current app footage and historical proof separately. Cut wallet waits and keep the numbers readable.
 - [ ] **Submitter · Check access now.** Open the event draft and confirm team access, required fields and who can make the repo public. When the links are ready, open the app, Solstice receipt, Stellar transaction, video and public repo signed out. Check video playback from Devpost and scan public assets for credentials or personal data. Submit, confirm Devpost says **Submitted**, and save the confirmation.
 
 ## If the demo breaks
 
-1. **Bill sorting breaks?** Keep the training-only cut. It’s already the default in the script and entry.
-2. **Loan setup still blocked by Nov 10?** Switch to a verified loan already funded on the same Testnet deployment. Label it **Already funded on Testnet**, show the working remittance, and update the entry and script to match.
-3. **Can’t complete a real Testnet remittance?** Save the exact failure and keep the mock footage internal. Keep working on the separate Showcase form.
+1. **Bill sorting breaks?** Fix and rerun the intake flow. If it remains blocked, show the working training path and describe only the steps visible in the recording.
+2. **Fresh Testnet signing unavailable?** Use the labeled walkthrough and historical proof described in the script. Keep the deployed contract ID available for the submission.
 
 ## What’s verified so far
 
-On the `agents` checkout at `6c10610`, 140 app tests passed and the simulated payment gave the expected split. The live check stopped at a network lookup, so the deployed contract is still unverified. Cached main at `c460c3c` contains the worker, provider, funder and proof screens. Its app README is still the framework starter.
+Read-only checks passed against the deployed Testnet contract on November 12, 2026. Historical loan #13 matches the intended payment and remittance amounts. Request #14 confirms the separate 65 test USDC employer grant. A fresh signed run of this branch requires the team’s configured Testnet wallets. [App walkthrough and evidence](../../app/README.md)
 
 From `app/`, run `npm run smoke:mock` for the simulation or `npm run smoke:real -- --reads` to check the configured contract without sending a transaction. The full `npm run smoke:real` sends transactions. Use the authorized disposable Testnet setup.
 

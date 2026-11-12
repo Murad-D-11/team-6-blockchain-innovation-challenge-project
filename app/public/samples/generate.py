@@ -5,9 +5,9 @@ from reportlab.lib.pagesizes import letter
 
 HERE = Path(__file__).resolve().parent
 for filename, provider, description, amount in [
-    ("training.pdf", "Pasig Skills Training Center", "Required pre-departure training", "190.00"),
+    ("training.pdf", "Pasig Skills Training Center", "Hypothetical pre-departure training", "190.00"),
     ("medical.pdf", "Bayside Medical Clinic", "Pre-entry medical exam", "65.00"),
-    ("placement.pdf", "Golden Gate Recruitment Agency", "Placement fee", "1,380.00"),
+    ("placement.pdf", "Golden Gate Recruitment Agency (Philippines)", "Placement fee", "1,380.00"),
 ]:
     c = canvas.Canvas(str(HERE / filename), pagesize=letter)
     c.setTitle("Sample fictional invoice")

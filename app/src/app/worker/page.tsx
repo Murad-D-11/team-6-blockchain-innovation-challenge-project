@@ -77,11 +77,6 @@ function Dashboard() {
   return (
     <div className="space-y-4">
       {error && <p className="text-sm text-red-700">{error}</p>}
-      {balance !== null && (
-        <p className="rounded-lg border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
-          Wallet balance <span className="ml-1 font-semibold text-foreground tabular-nums">{formatUsd(balance)} test USDC</span>
-        </p>
-      )}
 
       {loans.length > 0 ? (
         <SendHome loans={sorted} onDone={load} />
@@ -94,7 +89,7 @@ function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/worker/request" className={buttonVariants()}>List your bills</Link>
+            <Link href="/worker/request" className={buttonVariants()}>Check your bills</Link>
           </CardContent>
         </Card>
       )}
@@ -124,7 +119,13 @@ function Dashboard() {
         </Card>
       )}
 
-      <Link href="/worker/request" className="block text-center text-sm text-primary underline underline-offset-3 hover:text-foreground">List more bills or cancel a request</Link>
+      <Link href="/worker/request" className="block text-center text-sm text-primary underline underline-offset-3 hover:text-foreground">Manage bills and requests</Link>
+      {balance !== null && (
+        <details className="rounded-lg border border-border bg-card p-4">
+          <summary className="cursor-pointer text-sm font-semibold hover:text-primary">Wallet details</summary>
+          <p className="mt-2 text-sm">Available balance <span className="ml-1 font-semibold tabular-nums">{formatUsd(balance)} test USDC</span></p>
+        </details>
+      )}
       <details className="rounded-lg border border-border bg-card p-4">
         <summary className="cursor-pointer text-sm font-semibold hover:text-primary">See how financing compares in this demo</summary>
         <div className="mt-3"><WithoutWithLaya /></div>
@@ -224,7 +225,10 @@ function SendHome({ loans, onDone }: { loans: Loan[]; onDone: () => void }) {
             <p className="text-muted-foreground">
               Still owed: {fromUnits(sent.before)} → <span className="font-semibold text-foreground">{fromUnits(sent.result.outstanding)}</span>
             </p>
-            <TxStatus busy={false} error={null} txHash={sent.result.txHash} />
+            <details className="space-y-2">
+              <summary className="cursor-pointer font-medium">Transaction details</summary>
+              <TxStatus busy={false} error={null} txHash={sent.result.txHash} />
+            </details>
           </div>
         )}
       </CardContent>
