@@ -79,6 +79,7 @@ function Funding({ role }: { role: FunderRole }) {
   return (
     <div className="space-y-4">
       {loadError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{loadError}</p>}
+      {role === "employer" && <p className="text-sm">Pay what you owe straight to the clinic. One bill, one payer, one receipt.</p>}
       <TxStatus busy={tx.busy} error={tx.error} txHash={tx.result?.txHash} busyText="Submitting…" />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -138,13 +139,15 @@ function Funding({ role }: { role: FunderRole }) {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle>Loan #{l.id}</CardTitle>
-                    <StatusBadge status={s.status} detail={s.status === "Overdue" ? undefined : s.detail} />
+                    {l.mode === "Grant"
+                      ? <span className="text-sm">Paid by employer · worker owes 0</span>
+                      : <StatusBadge status={s.status} detail={s.status === "Overdue" ? undefined : s.detail} />}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-3">
                     <div><p>Outstanding</p><AmountDisplay units={l.outstanding} size="sm" showPhp={false} /></div>
-                    <div><p>Repaid</p><AmountDisplay units={l.totalRepaid} size="sm" showPhp={false} /></div>
+                    {l.mode !== "Grant" && <div><p>Repaid</p><AmountDisplay units={l.totalRepaid} size="sm" showPhp={false} /></div>}
                   </div>
                   <p>Remittances: {l.remitCount}</p>
                   <Link className="underline" href={`/proof/${l.id}`}>View receipt</Link>
