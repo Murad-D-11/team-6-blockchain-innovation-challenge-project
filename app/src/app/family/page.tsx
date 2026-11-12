@@ -77,9 +77,9 @@ function FamilyView() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
-            Some of {WORKER}&apos;s job bills were paid directly to the providers: her employer paid one, and a fair funder paid
-            the other. When she sends money home, a small share she chose repays the funder and the rest arrives here, in the
-            same transaction.
+            {WORKER}&apos;s bills before she left were paid straight to the clinic and training centre: her employer paid one,
+            and her remittance partner (funder) paid the other. When she sends money home, a small share she chose repays the
+            funder and the rest arrives here, in the same transaction.
           </p>
           <p>If she can&apos;t send money one month, repayment simply pauses. Nothing extra is added.</p>
           <p className="text-muted-foreground">You don&apos;t need to sign anything. This page only shows your balance.</p>

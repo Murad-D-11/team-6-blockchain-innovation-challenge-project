@@ -73,7 +73,7 @@ function classify(row: Row): Classification {
 
 export default function WorkerRequestPage() {
   return (
-    <PageShell title="List your bills" subtitle="Laya checks each bill against a published rulebook and sends it to whoever legally owes it.">
+    <PageShell title="List your bills" subtitle="Laya checks each bill against the funder's policy and shows who pays it. Bills are paid straight to the provider.">
       <RoleGuard role="worker">
         <BillsForm />
       </RoleGuard>
@@ -125,7 +125,7 @@ function BillsForm() {
 
   const familyOk = isValidAccount(family.trim());
   const pending = rows.filter((r) => !r.sent);
-  // Rows that will become requests: accepted by the rulebook, with an amount, a file and an on-chain provider address.
+  // Rows that will become requests: accepted by the funder's policy, with an amount, a file and an on-chain provider address.
   const ready = pending.filter((r) => {
     const c = classify(r);
     return !c.blocksRequest && parseAmount(r.amount) !== null && r.docHash !== null && PROVIDERS[r.providerIdx].address !== null;
@@ -217,7 +217,13 @@ function BillsForm() {
           </ul>
         )}
 
-        <p className="text-sm font-medium">Your signature is your consent to this request.</p>
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">Your signature is your consent to this request.</p>
+          <p className="text-muted-foreground">
+            If your remittance partner (funder) pays a bill, it may add one fee of at most 8%, fixed when it pays. No interest is
+            ever added, and it can never take more than {shareBps / 100}% of a transfer.
+          </p>
+        </div>
         <Button type="submit" size="lg" className="w-full" disabled={busy || ready.length === 0 || rows.some((r) => r.hashing)}>
           {busy ? "Signing…" : ready.length > 0
             ? `Sign and send ${ready.length} ${ready.length === 1 ? "request" : "requests"}`
@@ -258,7 +264,7 @@ function BillsForm() {
                     {c.payer === "employer" ? "Employer pays · you owe 0" : c.payer === "worker" ? "You pay through a fair loan" : "Needs review"}
                     {" · "}
                     {r.status === "Open" && "waiting for the provider to confirm the amount"}
-                    {r.status === "Confirmed" && `provider confirmed · waiting for the ${c.payer === "employer" ? "employer" : "funder"}`}
+                    {r.status === "Confirmed" && `provider confirmed · waiting for the ${c.payer === "employer" ? "employer" : "remittance partner (funder)"}`}
                     {r.status === "Funded" && "provider paid in full"}
                     {r.status === "Cancelled" && "cancelled"}
                     {r.family !== config.accounts.family && ` · family ${shortAddress(r.family)}`}
@@ -359,7 +365,7 @@ function BillRow({ row, index, touched, onChange, onFile, onRemove }: {
   );
 }
 
-/** The rulebook result for one bill: who owes it, why, and the source. */
+/** The funder's-policy result for one bill: who pays it, why, and the source. */
 function Verdict({ c }: { c: Classification }) {
   const style = {
     employer: "border-emerald-200 bg-emerald-50 text-emerald-900",
@@ -368,16 +374,16 @@ function Verdict({ c }: { c: Classification }) {
     needs_review: "border-amber-200 bg-amber-50 text-amber-900",
   }[c.payer];
   const headline = {
-    employer: "Employer-owed: the employer pays the provider directly. You owe 0.",
-    worker: "Worker-payable: a funder pays the provider directly, and you repay through a fair loan.",
-    prohibited: `Refused: ${lowerFirst(firstSentence(c.reason))}`,
+    employer: "Your employer can pay this: the money goes straight to the provider. You owe 0.",
+    worker: "Your remittance partner (funder) pays the provider directly. You repay a small share of each transfer home.",
+    prohibited: "Outside the funder's policy: this bill will not be paid or sent.",
     needs_review: "Sent to review: not sent as a request.",
   }[c.payer];
 
   return (
     <div className={`space-y-1 rounded-md border p-3 text-sm ${style}`} role={c.payer === "prohibited" ? "alert" : undefined}>
       <p className="font-semibold">{headline}</p>
-      <p>{c.payer === "prohibited" ? restAfterFirstSentence(c.reason) || "This bill will not be sent." : c.reason}</p>
+      <p>{c.reason}</p>
       {c.rule && (
         <a href={c.rule.sourceUrl} target="_blank" rel="noreferrer" className="inline-block underline underline-offset-2">
           Source: {c.rule.sourceLabel}
@@ -390,14 +396,3 @@ function Verdict({ c }: { c: Classification }) {
   );
 }
 
-function firstSentence(t: string): string {
-  const i = t.indexOf(". ");
-  return i === -1 ? t : t.slice(0, i + 1);
-}
-function restAfterFirstSentence(t: string): string {
-  const i = t.indexOf(". ");
-  return i === -1 ? "" : t.slice(i + 2);
-}
-function lowerFirst(t: string): string {
-  return t.charAt(0).toLowerCase() + t.slice(1);
-}
