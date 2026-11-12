@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 
 const demoRoles = [
   { label: "Submit bills", role: "Worker", href: "/worker/request?role=worker" },
-  { label: "Confirm the training invoice", role: "Training provider", href: "/creditor?role=creditor" },
-  { label: "Confirm the medical invoice", role: "Clinic", href: "/creditor?role=clinic" },
+  { label: "Confirm the training amount", role: "Training provider", href: "/creditor?role=creditor" },
+  { label: "Confirm the medical exam amount", role: "Clinic", href: "/creditor?role=clinic" },
   { label: "Finance the training bill", role: "Funder", href: "/funder?role=funder" },
   { label: "Pay for the medical exam", role: "Employer", href: "/funder?role=employer" },
   { label: "Send money home", role: "Worker", href: "/worker?role=worker" },
@@ -15,9 +15,9 @@ const demoRoles = [
 ];
 
 const sampleBills = [
-  { name: "Training", amount: "190 USDC", decision: "Eligible for financing" },
+  { name: "Hypothetical training bill", amount: "190 USDC", decision: "Eligible in this demo" },
   { name: "Medical exam", amount: "65 USDC", decision: "Employer can cover the full bill" },
-  { name: "Placement fee", amount: null, decision: "Outside the demo funding policy" },
+  { name: "Philippine recruiter placement fee", amount: null, decision: "Outside the demo funding policy" },
 ];
 
 const sides = [

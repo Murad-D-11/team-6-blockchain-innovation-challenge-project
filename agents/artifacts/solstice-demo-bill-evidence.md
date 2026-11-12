@@ -1,0 +1,11 @@
+# Solstice demo bill evidence
+
+Checked November 12, 2026. The three sample invoices illustrate different outcomes for a Filipino domestic worker preparing for employment in Hong Kong. The participants, invoices and test USDC amounts are fictional.
+
+| Demo case | Evidence and wording |
+| --- | --- |
+| Pre-employment medical exam | Clause 8 of Hong Kong's Standard Employment Contract makes the employer responsible for the medical examination expense. The Labour Department describes reimbursement when the worker pays first. Say **“Employer covers the medical exam.”** Direct payment to the clinic is the demo's proposed arrangement. [Hong Kong Labour Department guide, Q2.1](https://www.fdh.labour.gov.hk/res/pdf/FDHguideEnglish.pdf) |
+| Training bill | Philippine DMW rules list a certificate of competency issued by TESDA or another competent certifier among worker-payable categories. They assign additional testing or assessment requested by the employer to the employer. TESDA's Domestic Work NC II pathway includes a competency assessment. The sources establish a certification pathway, with the worker's actual obligation and any course cost requiring case-specific verification. Keep **“Hypothetical training bill”** and present eligibility and 190 test USDC as scenario assumptions. [DMW rules, §§55–56](https://dmw.gov.ph/archives/v1/resources/dsms/DMW/ISN-EXT/2023/DMW-DC-01-2023.pdf) · [TESDA training regulations, §4](https://tesda.gov.ph/Downloadables/TRs/TR%20-%20Domestic%20Work%20NC%20II.pdf) |
+| Philippine recruitment agency placement fee | DMW rules exempt domestic workers from Philippine placement fees. Hong Kong separately permits a licensed local agency to charge up to 10% of the first month's wages after successful placement. Say **“We decline to finance this Philippine recruiter’s placement fee.”** Review issuer and jurisdiction before applying the rule to other charges. [DMW rules, §55](https://dmw.gov.ph/archives/v1/resources/dsms/DMW/ISN-EXT/2023/DMW-DC-01-2023.pdf) · [Hong Kong Employment Agencies Administration](https://www.eaa.labour.gov.hk/en/helpers.html) |
+
+Before piloting financing, verify a specific provider, what the service covers, who owes the fee, whether the worker has coverage or a subsidy, and the actual amount. Ask the financing partner to approve that charge and the repayment terms.

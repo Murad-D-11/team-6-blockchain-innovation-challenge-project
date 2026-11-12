@@ -1,31 +1,29 @@
 # Solstice one-minute Devpost video
 
-**Recording draft.** The amounts below are the planned demo inputs and expected outputs. Use this narration once the recorded Testnet run passes the checks. The local `origin/main` snapshot at `c460c3c` contains the worker request, dashboard, family and receipt pages. Confirm the exact deployment before recording.
-
-**What the viewer should remember.** A lender pays Maria’s training provider directly. When Maria sends money home through Solstice, Stellar delivers the family payment and loan repayment in one transaction.
-
-## Record this cut
-
-Use one fictional worker, one training invoice, and one funded loan throughout. Start on the working app. Keep **Stellar Testnet · fictional invoice and illustrative loan terms** visible and use the same loan ID across cuts. The time ranges are edit points.
+Open on the app. Give viewers the problem and Solstice’s job in the first shot, then show the payer decision, provider payment, and remittance. Keep one training loan from request through receipt. The clinic payment is a separate request. The script follows Devpost’s narrated screencast guidance and Kevin Hale’s advice to explain what you do in plain language. [Devpost video guidance](https://help.devpost.com/article/84-video-making-best-practices) · [Kevin Hale’s YC talk](https://www.ycombinator.com/library/6q-how-to-pitch-your-startup) · [Challenge requirements](https://blockchain-stellar-ic.devpost.com/)
 
 | Time | Voiceover | Screen and action |
 | --- | --- | --- |
-| 0:00–0:08 | “Maria is a fictional Filipino domestic worker headed to Hong Kong. Her training bill is due before payday.” | Open the actual worker request page. Zoom in on the 190-unit training bill and provider. Put the Solstice name on this shot. |
-| 0:08–0:20 | “In Solstice, Maria attaches the training invoice and chooses to put fifteen percent of each remittance toward repayment.” | On **List your bills**, remove the default medical and placement-fee rows before capture. Show the synthetic invoice, 190 amount and 15% share. Submit via **Sign and send 1 request** and hold the resulting request. |
-| 0:20–0:34 | “The school confirms the invoice. The lender pays the school 190 directly. With a three percent flat fee, Maria owes 195.70.” | Show **Confirm invoice**, then **Flat fee (%)** set to 3 and **Fund loan**. Keep the provider and loan ID legible. Caption the observed result **190 paid to school · 5.70 fee · 195.70 owed**. |
-| 0:34–0:51 | “Maria sends 400 through Solstice. At her chosen fifteen percent share, her family gets 340, the lender gets 60, and her balance drops to 135.70.” | Enter 400 in **Send money home** on the worker dashboard. Hold the preview for the two recipients, click **Send 400 home** and cut wallet waiting. Hold the confirmed result with both amounts and the updated balance. |
-| 0:51–1:00 | “Both payments settle in one Stellar transaction. The public receipt shows the updated loan balance.” | Show the actual remittance transaction in the Testnet explorer, then the public receipt for the same loan. Leave the receipt on screen with **135.70 owed** readable. |
+| 0:00–0:10 | “Maria is moving from the Philippines to Hong Kong for work. Her bills come before her first paycheck. Solstice checks who should pay before she borrows.” | Start on the worker’s bill screen. Show the medical exam immediately. Caption **Fictional worker · Philippines to Hong Kong**. |
+| 0:10–0:22 | “Her employer owes the clinic bill. Solstice also blocks the recruiter’s placement fee, so Maria only asks to borrow for this sample training bill.” | Cut through the actual bill outcomes. Hold briefly on **Employer pays** and the refused Philippine recruiter fee. Land on the 190 training request. |
+| 0:22–0:34 | “The school confirms the bill. The lender pays the school directly. With the fee, Maria owes 195.70.” | Cut from provider confirmation to confirmed payment. Hold on **190 paid to provider** and **195.70 owed**. Use captions if the amounts appear on different screens. |
+| 0:34–0:53 | “Later, Maria sends 400 home. She’s chosen to put 15 percent toward her loan. Her family gets 340, the lender gets 60, and she now owes 135.70.” | Show **Send money home** and the split preview. Click send, cut the wallet wait, then hold on the confirmed result and updated balance. |
+| 0:53–1:00 | “On Stellar Testnet, both payments and the new balance are recorded in one transaction.” | Open the receipt for the same training request, then show the matching Testnet transaction. Keep the result legible through the end. |
 
-**Optional 0:08–0:20 triage cut.** If the same build verifies the outcomes and the edit still makes the training request clear, say “The app’s demo rules assign the exam to the employer, refuse the placement fee, and route training to financing.” Show the three classifications and the training request. Complete any accepted rows with synthetic inputs before submitting. Keep the 15% share visible in the app. Any medical payment claim needs its own observed transaction. Keep the training-only cut if triage competes with the repayment and proof shots.
+## Recording checks
 
-**Pacing.** The primary voiceover is about 115 spoken words with the amounts read aloud. The opening is the tightest beat at 18 words in eight seconds. Read the full table once against a stopwatch before capture. If the opening runs long, use “Maria’s training bill is due before her first paycheck in Hong Kong.” Caption **Fictional worker · Philippines to Hong Kong**. Hold the split and proof shots through the full allotted time.
+- Keep **Fictional bills · illustrative loan terms** visible. Use **Stellar Testnet · test USDC** only for verified footage using that asset. Say the amounts in full when timing the voiceover.
+- The medical outcome describes payer responsibility. If you show a paid medical bill, verify that transaction separately.
+- The selected file is fingerprinted locally. If you show provider confirmation, use the provider’s own records as the point of comparison.
+- Start with a fresh loan and check its ID before sending. Use the [production checklist](solstice-devpost-production.md) for wallets, Testnet proof, and upload.
+- Read the voiceover against a stopwatch and give someone one viewing. Ask who owed the exam bill, who got each share of the remittance, and where to verify the transaction.
 
-## Before you hit record
+## Historical Testnet proof
 
-Follow the [production checklist](solstice-devpost-production.md) for wallets, Testnet proof and upload. Start with a fresh loan and check its ID before sending. If the team records the build that still shows the old name, add a small **Solstice · earlier build shown as Laya** caption. Keep the old legal wording and cost comparison out of the shot, and leave the actual payment outcome visible.
+If fresh Testnet signing is unavailable, prepare a contingency cut with the current working app in mock mode and label those shots **Local demo · mock balances**. At the end, cut to **Earlier Stellar Testnet run · loan #13** and say “An earlier Testnet run recorded this same split and balance update in one transaction.” Keep the request IDs tied to their respective recordings. Organizer acceptance of this mixed-footage cut is unconfirmed. Devpost still requires a functional Testnet deployment.
 
-For the playback check, give someone one watch. Ask who received the training payment, where the 400 went, and where to check it. If they miss a point, fix the caption or hold the shot longer.
+- [Loan #13 paid 190 test USDC to the training provider](https://stellar.expert/explorer/testnet/tx/7a201a59249a5802b096494e61928713199612b6291f233b0645e11becff784c)
+- [Loan #13 split 400 into 340 for family and 60 for the lender, leaving 135.70 owed](https://stellar.expert/explorer/testnet/tx/0e07bb9956d1e4fb301fc841b1838216da8b958b31fc071ec88423395daf22bf)
+- [Request #14 paid the clinic 65 test USDC as an employer grant](https://stellar.expert/explorer/testnet/tx/a2d86b7f49f9208eec91ac34133ec9e7e4dec28d6d4087fcbe5ed4d35179dfc6)
 
-If setup footage is blocked, open on the verified funded loan with **Already funded on Testnet**. Keep the opening line about Maria. Then say “The lender has already paid her training provider. With the three percent flat fee, Maria owes 195.70.” Move straight to the remittance and give the extra time to the split and proof.
-
-[Devpost plan](../context/devpost-submission-plan.md) · [Organizer requirements in the challenge brief](../context/challenge-brief.md) · [Planned scenario](../context/pitch-context.md)
+[Pitch context](../context/pitch-context.md) · [Challenge requirements](../context/challenge-brief.md)

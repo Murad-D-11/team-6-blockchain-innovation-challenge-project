@@ -1,53 +1,53 @@
-# Solstice Devpost draft
+# Solstice
 
-Working copy. Replace the bracketed fields with verified links and IDs before pasting. See the [production checklist](solstice-devpost-production.md) for what to verify.
+**Tagline** · Get pre-departure bills paid by the right party.
 
-## Paste into Devpost
+**Built with** · Stellar, Soroban, Rust, Next.js, TypeScript
 
-- **Project name** · Solstice
-- **Tagline** · Send money home and pay down a loan in one step.
-- **Built with** · Stellar, Soroban, Rust, Next.js, TypeScript
+## Inspiration
 
-- [One-minute prototype demo]([PUBLIC_VIDEO_URL])
-- [Open the Solstice receipt without a wallet]([PUBLIC_RECEIPT_URL]) and [check the Stellar transaction]([TESTNET_TRANSACTION_URL])
-- [Open the Stellar Testnet app]([PUBLIC_APP_URL])
-- [Source and setup instructions]([PUBLIC_REPOSITORY_URL])
-- **Testnet contract** · `[VERIFIED_CONTRACT_ID]`
+A job in Hong Kong can come with bills before the first paycheck. Hong Kong’s Labour Department describes how a domestic worker may pay expenses such as a medical exam upfront, then get reimbursed by the employer after showing receipts. An ILO and Philippine Statistics Authority analysis of 2019 survey data found that recruitment costs averaged **₱49,000** for Filipino domestic workers in Hong Kong. [Hong Kong Labour Department guide](https://www.fdh.labour.gov.hk/res/pdf/FDHguideEnglish.pdf#page=9) · [ILO/PSA recruitment cost report](https://www.ilo.org/sites/default/files/2024-05/measuring-sustainable-development-goal-indicator-philippines-report-2023-en.pdf#page=34)
 
-### Who it serves
+That raised our starting question. **How much does a worker actually need to borrow once you check who owes each bill?**
 
-Maria is a fictional Filipino domestic worker preparing to work in Hong Kong. Her first paycheck is weeks away, but a training invoice is due now. Before she borrows, she needs to know which bills are hers to pay and what a loan would cost. After she starts earning, she needs to send money home while paying down that debt.
+## What it does
 
-Solstice is designed to help Filipino domestic workers heading to Hong Kong sort pre-departure bills before borrowing, pay providers directly, and repay eligible financing through a chosen share of remittances sent through the app.
+Solstice helps Filipino domestic workers heading to Hong Kong figure out who should pay their pre-departure bills. Employers can pay providers directly, lenders can fund eligible worker expenses, and workers can repay part of a loan when they send money home.
 
-### How it works
+1. **Check who pays.** In our demo, Maria is a fictional worker. Solstice routes her medical exam to the employer, refuses to finance a placement fee charged by a Philippine recruiter, and lets her request financing for a hypothetical training bill. Philippine recruitment rules exempt domestic workers from placement fees. [Philippine Department of Migrant Workers rules, §§55–59](https://dmw.gov.ph/archives/v1/resources/dsms/DMW/ISN-EXT/2023/DMW-DC-01-2023.pdf)
+2. **Pay the provider.** The school confirms the submitted amount and the lender pays the school **190 test USDC** directly. With the demo’s illustrative 3% flat fee, Maria owes **195.70**.
+3. **Send money home.** Maria sends **400 test USDC** through Solstice with a 15% repayment share. Her family receives **340**, the lender receives **60**, and her balance falls to **135.70**.
 
-1. **Request financing.** Maria enters a fictional training bill and submits a request to have the provider paid directly.
-2. **Pay the provider.** The school confirms a training invoice for 190 test units. A lender pays the school directly. The illustrative 3% flat fee adds 5.70, bringing the total owed to 195.70.
-3. **Send money home and pay down the loan.** With her repayment share set to 15%, Maria sends 400 test units through Solstice. Her family gets 340, the lender gets 60, and her outstanding balance drops to 135.70. The fee sets the cost of this example loan. The repayment share sets how much of a transfer goes toward the balance.
+## How we built it
 
-### Why Stellar
+We built the role-based app in Next.js and TypeScript and the payment contract in Rust on Stellar’s Soroban platform. The app applies bill rules to the details Maria enters. The contract records provider confirmation, pays providers directly, and handles repayment.
 
-The app applies the bill rules. The Soroban contract handles the lender’s direct payment to the provider. When Maria sends money home through Solstice, one Stellar transaction sends the two payments and reduces the loan balance. The lender and family can check the transfers against the same transaction record. The provider’s invoice confirmation and the transaction record answer different questions: who confirmed the bill and where the money went.
+Stellar lets us put both transfers and the loan balance update in **one transaction**. The family and lender can trace their transfers to the same operation, and the lender’s share is capped at the outstanding balance.
 
-### What we built and how to verify it
+## Challenges we ran into
 
-The prototype uses fictional invoices, demo accounts and Testnet funds. Open the Solstice receipt for the remaining balance and the Stellar transaction for the transfers of 340 and 60. The worker, provider and lender screens use configured demo wallets. The repository explains how to run the app.
+We needed a way to link a bill to its payment record while keeping the invoice itself off the public ledger. The browser computes a fingerprint of the file and keeps the original local. The fingerprint lets someone with a copy check whether it matches the file selected at submission. The provider separately confirms the amount from its own records, and the transaction shows where the money went.
 
-### What we learned
+## Accomplishments that we're proud of
 
-In simulation, a 400-unit transfer at 15% produced a 340 family payout, a 60 lender payment and 135.70 still owed. We still need feedback from the workers this is designed for. Our next usability check asks a participant to predict the family payout, lender payment and remaining balance before confirming a transfer. We’ll use what they get stuck on to revise the screen and retest it.
+We ran both paths on Stellar Testnet. An employer paid **65 test USDC** directly to the clinic as a grant, with zero owed by the worker. In the separate training example, the lender paid the school directly, and Maria’s remittance paid her family and reduced her debt in the same transaction. These are historical runs using fictional bills and test funds. [Clinic payment](https://stellar.expert/explorer/testnet/tx/a2d86b7f49f9208eec91ac34133ec9e7e4dec28d6d4087fcbe5ed4d35179dfc6) · [Training payment](https://stellar.expert/explorer/testnet/tx/7a201a59249a5802b096494e61928713199612b6291f233b0645e11becff784c) · [Remittance split](https://stellar.expert/explorer/testnet/tx/0e07bb9956d1e4fb301fc841b1838216da8b958b31fc071ec88423395daf22bf) · [Testnet contract](https://stellar.expert/explorer/testnet/contract/CCQ2LMIEGRCWT5YV4DPCR2VGNP76DVYVPD5KJMCFJILZ7FMX37LL4KS3)
 
-### What we would test next
+## What we learned
 
-The split applies to payments made through Solstice. A transfer through another service leaves this balance unchanged. We would test whether workers prefer the combined payment after accounting for fees and how families receive the money, and whether a lender would fund the bill before departure. For a pilot, we would track how much workers pay out of pocket before their first paycheck and the total cost of financing and transfers. A lender or remittance provider covering servicing costs is a possible model to test alongside partner requirements for payouts, currency conversion and missed payments.
+Existing services helped us narrow the idea. Fair Employment Agency already covers some upfront costs through its employer hiring package. Budget Finance offers loans to overseas Filipino workers but lists a visa, ticket, and Overseas Employment Certificate among its release requirements. The case we want to test is a legitimate bill that remains unpaid when it comes due, after employer coverage and other options are accounted for. [Fair Employment Agency package](https://fairagency.org/helper-full-hire/) · [Budget Finance OFW loan](https://budgetfinance.ph/ofw-loan)
 
-## Team notes
+## What's next for Solstice
 
-- If the video starts with an already-funded loan, name that setup in “What we built and how to verify it” and say which action was recorded live.
-- If the video includes bill sorting, describe the observed decisions. Include employer payment only if you verified the clinic payment.
-- If a usability session happens, replace the planned check in “What we learned” with who tested, what happened, what changed and the retest result.
+We want to replay one real, anonymized bill with a provider and a licensed lender. We’ll compare who paid, when the money arrived, and how much the worker had to pay upfront or borrow under the options available at the time. On the repayment side, we’ll compare total costs at the same peso payout to the family and check what happens when the worker skips a transfer or uses another service.
 
-**Gallery order** · Training request or funded training loan, confirmed 340/60 split with remaining balance, then receipt with the transaction link. Use screenshots from the same run and synthetic data only.
+Our first prospective customer is a lender already serving overseas Filipino workers. We’d test a per-loan servicing fee if provider confirmation, direct payment, and automatic repayment posting save the lender enough work. We’d look for a better outcome for the worker, such as earlier funding or lower total cost, before expanding beyond one bill type and one provider.
 
-**Source notes** · [Core flow](../context/core-flow.md) · [Pitch context](../context/pitch-context.md) · [Devpost submission plan](../context/devpost-submission-plan.md) · [Advisor meeting and simulation note](solstice-advisor-meeting.md) · [Research decision](solstice-research-decision.md) · [Contract implementation](../../contracts/laya/src/lib.rs)
+---
+
+### Submission fields to fill before publishing
+
+- **Video** · Add the public one-minute prototype video.
+- **Source code** · Add the public GitHub repository with setup and run instructions.
+- **Try it out** · Add the verified Testnet app URL and wallet-free receipt URL if available. Testnet contract ID: `CCQ2LMIEGRCWT5YV4DPCR2VGNP76DVYVPD5KJMCFJILZ7FMX37LL4KS3`.
+
+Test the video, source, and app links while signed out. Paste the seven story sections into Devpost and enter the tagline, technology tags, and links in their dedicated fields. [Devpost submission fields](https://help.devpost.com/article/126-know-your-submission-steps) · [Challenge requirements](https://blockchain-stellar-ic.devpost.com/)

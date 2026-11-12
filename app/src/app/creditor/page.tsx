@@ -16,7 +16,7 @@ import { classify } from "@/data/ui";
 
 export default function ProviderPage() {
   return (
-    <PageShell title="Provider invoices" subtitle="Review and confirm invoices submitted to your organization." wide>
+    <PageShell title="Confirm bill amounts" subtitle="Compare each submitted amount with your own invoice records." wide>
       <RoleGuard role="creditor">
         <OpenRequests />
       </RoleGuard>
@@ -56,15 +56,15 @@ function OpenRequests() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="text-sm">Invoice amount:</p>
+              <p className="text-sm">Submitted amount</p>
               <AmountDisplay units={r.legalAmount} size="md" />
             </div>
-            <p className="text-sm">By confirming, you state that the invoice amount is exactly this.</p>
-            <Button disabled={tx.busy} onClick={() => void confirm(r.id)}>{tx.busy ? "Confirming…" : "Confirm invoice"}</Button>
+            <p className="text-sm">If you need the original invoice, arrange to receive it separately. Confirm the amount once it matches your records.</p>
+            <Button disabled={tx.busy} onClick={() => void confirm(r.id)}>{tx.busy ? "Confirming…" : "Confirm amount"}</Button>
           </CardContent>
         </Card>
       ))}
-      {open.length === 0 && <p className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">No invoices are waiting for confirmation.</p>}
+      {open.length === 0 && <p className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">No bills are waiting for confirmation.</p>}
     </div>
   );
 }
