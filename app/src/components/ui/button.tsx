@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 
 /** shadcn-style Button (hand-written; the shadcn registry was unreachable when this was added). */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outline: "border border-border bg-background hover:bg-accent",
+        outline: "border border-input bg-transparent hover:bg-secondary",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "bg-destructive text-white hover:bg-destructive/90",
+        destructive: "bg-destructive text-primary-foreground hover:bg-destructive/90",
         ghost: "hover:bg-accent",
         link: "text-primary underline-offset-4 hover:underline",
       },

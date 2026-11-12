@@ -45,7 +45,7 @@ export default function AdminPage() {
   }
 
   return (
-    <PageShell title="Admin">
+    <PageShell title="Admin" subtitle="Manage provider approvals and review the funding policy.">
       {loadError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{loadError}</p>}
 
       <RoleGuard role="admin">

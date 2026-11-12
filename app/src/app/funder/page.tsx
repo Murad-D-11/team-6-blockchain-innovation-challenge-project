@@ -28,7 +28,7 @@ export default function FunderPage() {
   const { role } = useWallet();
   const guard: FunderRole = role === "employer" ? "employer" : "funder";
   return (
-    <PageShell title="Funding">
+    <PageShell title="Funding" subtitle={guard === "employer" ? "Review confirmed bills your organization can pay directly." : "Review confirmed invoices and track the bills you finance."} wide>
       <RoleGuard role={guard}>
         <Funding role={guard} />
       </RoleGuard>
@@ -79,16 +79,15 @@ function Funding({ role }: { role: FunderRole }) {
   return (
     <div className="space-y-4">
       {loadError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{loadError}</p>}
-      {role === "employer" && <p className="text-sm">Pay what you owe straight to the clinic. One bill, one payer, one receipt.</p>}
       <TxStatus busy={tx.busy} error={tx.error} txHash={tx.result?.txHash} busyText="Submitting…" />
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList aria-label="Funding views" activateOnFocus>
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="requests" className="space-y-4">
-          {eligible.length === 0 && <p className="text-sm text-muted-foreground">No confirmed requests for this account.</p>}
+        <TabsContent value="requests" className="grid items-start gap-4 lg:grid-cols-2">
+          {eligible.length === 0 && <p className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground lg:col-span-2">No confirmed requests for this account.</p>}
           {eligible.map((r) => {
             const c = classify(r);
             const p = provider(r.creditor);
@@ -101,7 +100,7 @@ function Funding({ role }: { role: FunderRole }) {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
-                  <p>Worker: {r.worker === config.accounts.worker ? people.worker.name : r.worker}</p>
+                  <p className="wrap-anywhere">Worker: {r.worker === config.accounts.worker ? people.worker.name : r.worker}</p>
                   <p>Provider: {p?.name} · {p?.regNo}</p>
                   <div>
                     <p>Amount:</p>
@@ -119,7 +118,7 @@ function Funding({ role }: { role: FunderRole }) {
                       <p>Estimated repayment: {r.shareBps > 0 && Number.isSafeInteger(feeBps) && feeBps >= 0 && feeBps <= 800 ? ((r.legalAmount * BigInt(10000 + feeBps) / 10000n + (4000000000n * BigInt(r.shareBps) / 10000n) - 1n) / (4000000000n * BigInt(r.shareBps) / 10000n)).toString() : "—"} remittances of 400 USDC, assuming the same share each time.</p>
                     </>
                   ) : (
-                    <p>Grant · fee 0 · worker owes 0</p>
+                    <p>Grant with zero fees. The worker owes 0.</p>
                   )}
                   <Button disabled={tx.busy} onClick={() => void fund(r.id)}>
                     {tx.busy ? "Submitting…" : role === "employer" ? "Pay as employer" : "Fund loan"}
@@ -130,7 +129,7 @@ function Funding({ role }: { role: FunderRole }) {
           })}
         </TabsContent>
 
-        <TabsContent value="portfolio" className="space-y-4">
+        <TabsContent value="portfolio" className="grid items-start gap-4 lg:grid-cols-2">
           {mine.map((l) => {
             // Same wording as before: "Overdue" carries no "n missed" detail.
             const s = loanDisplayStatus(l, maxPause);

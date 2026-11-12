@@ -16,7 +16,7 @@ import { classify } from "@/data/ui";
 
 export default function ProviderPage() {
   return (
-    <PageShell title="Provider">
+    <PageShell title="Provider invoices" subtitle="Review and confirm invoices submitted to your organization." wide>
       <RoleGuard role="creditor">
         <OpenRequests />
       </RoleGuard>
@@ -64,7 +64,7 @@ function OpenRequests() {
           </CardContent>
         </Card>
       ))}
-      {open.length === 0 && <p className="text-sm text-muted-foreground">No open requests for this provider.</p>}
+      {open.length === 0 && <p className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">No invoices are waiting for confirmation.</p>}
     </div>
   );
 }

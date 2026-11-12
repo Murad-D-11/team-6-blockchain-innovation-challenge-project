@@ -38,7 +38,6 @@ export function LatestReceipts() {
     return (
       <li>
         <span className="font-medium">Loading receipts…</span>
-        <span className="block text-sm text-muted-foreground">Reading the latest funded requests from Stellar</span>
       </li>
     );
   }
@@ -56,7 +55,7 @@ export function LatestReceipts() {
     <>
       {ids.map((id) => (
         <li key={id}>
-          <Link href={`/proof/${id}`} className="font-medium text-blue-600 underline">
+          <Link href={`/proof/${id}`} className="font-medium text-primary underline underline-offset-3 hover:text-foreground">
             Receipt #{id}
           </Link>
           <span className="block text-sm text-muted-foreground">Public proof for request #{id}</span>

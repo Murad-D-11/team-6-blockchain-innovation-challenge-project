@@ -10,7 +10,7 @@ export function TxLink({ hash, label = "View transaction" }: { hash: string; lab
       href={`${config.explorerTxUrl}${hash}`}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-1 text-sm text-blue-600 underline underline-offset-2"
+      className="inline-flex flex-wrap items-center gap-x-1 text-sm text-primary underline underline-offset-3 hover:text-foreground"
     >
       {label} <span className="font-mono text-xs">{shortAddress(hash)}</span>
       {IS_MOCK && <span className="text-xs text-muted-foreground no-underline">(mock, not on chain)</span>}

@@ -28,7 +28,7 @@ const FAMILY = firstName(PEOPLE.family.name);
 export default function WorkerDashboardPage() {
   const sub = [PEOPLE.worker.name, PEOPLE.worker.job, PEOPLE.worker.country].filter(Boolean).join(" · ");
   return (
-    <PageShell title="My Laya" subtitle={sub}>
+    <PageShell title="Your money and bills" subtitle={sub} wide>
       <RoleGuard role="worker">
         <Dashboard />
       </RoleGuard>
@@ -78,8 +78,8 @@ function Dashboard() {
     <div className="space-y-4">
       {error && <p className="text-sm text-red-700">{error}</p>}
       {balance !== null && (
-        <p className="text-sm text-muted-foreground">
-          Wallet balance: <span className="font-semibold text-foreground">{formatUsd(balance)}</span> test USDC
+        <p className="rounded-lg border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
+          Wallet balance <span className="ml-1 font-semibold text-foreground tabular-nums">{formatUsd(balance)} test USDC</span>
         </p>
       )}
 
@@ -99,15 +99,19 @@ function Dashboard() {
         </Card>
       )}
 
-      {sorted.map((l) => <LoanCard key={l.id} loan={l} maxPause={maxPause} onChanged={load} />)}
-
-      <WithoutWithLaya />
+      {sorted.length > 0 && (
+        <section aria-labelledby="paid-bills" className="space-y-3">
+          <h2 id="paid-bills" className="text-2xl font-semibold tracking-tight">Paid bills</h2>
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            {sorted.map((l) => <LoanCard key={l.id} loan={l} maxPause={maxPause} onChanged={load} />)}
+          </div>
+        </section>
+      )}
 
       {waiting.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Waiting</CardTitle>
-            <CardDescription>Bills not paid yet.</CardDescription>
+            <CardTitle>Bills awaiting payment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {waiting.map((r) => (
@@ -120,7 +124,11 @@ function Dashboard() {
         </Card>
       )}
 
-      <Link href="/worker/request" className="block text-center text-sm text-blue-600 underline">List more bills or cancel a request</Link>
+      <Link href="/worker/request" className="block text-center text-sm text-primary underline underline-offset-3 hover:text-foreground">List more bills or cancel a request</Link>
+      <details className="rounded-lg border border-border bg-card p-4">
+        <summary className="cursor-pointer text-sm font-semibold hover:text-primary">See how financing compares in this demo</summary>
+        <div className="mt-3"><WithoutWithLaya /></div>
+      </details>
     </div>
   );
 }
@@ -240,7 +248,7 @@ function LoanCard({ loan, maxPause, onChanged }: { loan: Loan; maxPause: number;
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="rounded-md border border-emerald-200 bg-emerald-50 p-2 font-semibold text-emerald-900">Paid by employer: you owe 0</p>
-          <Link href={`/proof/${loan.id}`} className="text-sm text-blue-600 underline">Public receipt</Link>
+          <Link href={`/proof/${loan.id}`} className="text-sm text-primary underline underline-offset-3 hover:text-foreground">Public receipt</Link>
         </CardContent>
       </Card>
     );
@@ -283,7 +291,7 @@ function LoanCard({ loan, maxPause, onChanged }: { loan: Loan; maxPause: number;
 
         <LockedTerms loan={loan} />
 
-        <Link href={`/proof/${loan.id}`} className="text-sm text-blue-600 underline">Public receipt</Link>
+        <Link href={`/proof/${loan.id}`} className="text-sm text-primary underline underline-offset-3 hover:text-foreground">Public receipt</Link>
       </CardContent>
     </Card>
   );
@@ -332,20 +340,20 @@ function WithoutWithLaya() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <CardTitle>Without Laya vs with Laya</CardTitle>
+          <CardTitle>Compare financing costs</CardTitle>
           <span className="text-xs text-muted-foreground">illustrative</span>
         </div>
         <CardDescription>Maria&apos;s two bills before she leaves: training 190 and medical exam 65.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-900">
-          <p className="font-semibold">Without Laya</p>
+          <p className="font-semibold">Example high-interest loan</p>
           <p className="text-2xl font-bold tabular-nums">255 USDC</p>
           <p>She borrows it all from a lender her recruiter points her to, at 100% a year or more.</p>
           <p>The interest alone is about <span className="font-semibold">21 USDC a month</span>, even in months she earns nothing, and the debt grows.</p>
         </div>
         <div className="space-y-1 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
-          <p className="font-semibold">With Laya</p>
+          <p className="font-semibold">With Solstice</p>
           <p className="text-2xl font-bold tabular-nums">195.70 USDC</p>
           <p>Her employer pays the medical exam. Her remittance partner (funder) pays the training.</p>
           <p>She owes only the training plus a one-time 3% fee. No interest, repaid from what she sends home, and <span className="font-semibold">paused when she sends nothing</span>.</p>

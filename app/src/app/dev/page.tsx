@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PageShell } from "@/components/PageShell";
 import config from "@/lib/config";
 import { MockLayaClient } from "@/lib/client/mock";
 import { useLaya } from "@/lib/hooks/useLaya";
@@ -90,21 +91,21 @@ export default function DevPage() {
       return { ...r, loan: await laya.getLoan(r.loanId) };
     });
 
-  const btn = "rounded border px-3 py-1 disabled:opacity-40";
+  const btn = "min-h-10 rounded-md border border-input bg-card px-3 py-2 text-left hover:bg-secondary disabled:opacity-40";
 
   return (
-    <main className="mx-auto max-w-2xl space-y-4 p-6 text-sm">
-      <h1 className="text-xl font-bold">/dev: v2 golden flow on the mock</h1>
+    <PageShell title="Demo runner" subtitle="Run the training loan, medical grant, and remittance with mock accounts." publicView>
+      <div className="space-y-5 text-sm">
       {!mock && <p className="text-red-600">Not running on the mock (NEXT_PUBLIC_USE_MOCK is not &quot;true&quot;).</p>}
       <p>
-        Acting as: <b>{role}</b> · training request/loan: {training ?? "none"} · medical request/loan: {medical ?? "none"}
+        Acting as <b>{role}</b>. Training request or loan: {training ?? "none"}. Medical request or loan: {medical ?? "none"}.
       </p>
       <p>
         Worker owes: training <b>{owed.training ?? "-"}</b> USDC · medical <b>{owed.medical ?? "-"}</b> USDC
       </p>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold">Training bill: 190 USDC, funder pays as a Loan at 300 bps</h2>
+      <section className="space-y-3 rounded-lg border border-border bg-card p-4 sm:p-5">
+        <h2 className="text-base font-semibold">Training bill · 190 USDC loan at 3%</h2>
         <div className="flex flex-wrap gap-2">
           <button disabled={busy} className={btn} onClick={() => request("training", "190", config.accounts.creditor, setTraining)}>
             1. Request 190 (worker, provider = creditor)
@@ -130,8 +131,8 @@ export default function DevPage() {
         </div>
       </section>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold">Medical bill: 65 USDC, employer pays as a Grant</h2>
+      <section className="space-y-3 rounded-lg border border-border bg-card p-4 sm:p-5">
+        <h2 className="text-base font-semibold">Medical bill · 65 USDC employer grant</h2>
         <div className="flex flex-wrap gap-2">
           <button disabled={busy} className={btn} onClick={() => request("medical", "65", config.accounts.clinic, setMedical)}>
             5. Request 65 (worker, provider = clinic)
@@ -181,6 +182,7 @@ export default function DevPage() {
           {log.length ? log.join("\n\n") : "Nothing yet."}
         </pre>
       </section>
-    </main>
+      </div>
+    </PageShell>
   );
 }

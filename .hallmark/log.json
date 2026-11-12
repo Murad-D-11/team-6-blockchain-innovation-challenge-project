@@ -1,0 +1,28 @@
+[
+ {
+  "genre": "editorial",
+  "sections": [
+   "Bill register",
+   "Demo roles",
+   "Public receipts",
+   "Colophon"
+  ],
+  "signature": "Pre-departure bill register",
+  "nav": "masthead",
+  "prompt": "Redesign Solstice with Hallmark and Refero product references",
+  "photos": [],
+  "hero": "Settled",
+  "footer": "colophon",
+  "entry": "Solstice",
+  "scope": "site",
+  "depth": "full",
+  "axes": "mid/grotesk-sans/chromatic-magenta",
+  "imagery": "product",
+  "theme": "almanac",
+  "waived": [],
+  "shape": "Narrative Workflow",
+  "mode": "redesign",
+  "fingerprint": "d76b0e",
+  "date": "2026-11-12"
+ }
+]
