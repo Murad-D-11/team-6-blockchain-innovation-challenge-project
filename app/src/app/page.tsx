@@ -20,6 +20,22 @@ const sampleBills = [
   { name: "Placement fee", amount: null, decision: "Outside the demo funding policy" },
 ];
 
+const sides = [
+  { who: "Worker", why: "No cash upfront and no high-interest lender. She repays only when she sends money home, at most 15% of each transfer." },
+  { who: "Remittance partner (funder)", why: "Pays the bills and wins a customer for years. It is repaid through transfers it already carries, on terms it can't break, so workers can trust it." },
+  { who: "Employer (optional)", why: "Can pay the costs it already owes straight to the clinic before the helper leaves. A helper who starts without a high-interest loan is less likely to bring debt collectors to its door." },
+];
+
+const enforced = [
+  "Only the worker can send money. The funder can never take money from her account.",
+  "The repayment share is at most 15% and can't drop below the share she agreed.",
+  "The fee is at most 8% and is locked when the bill is paid.",
+  "The funder never receives more than is owed.",
+  "Money goes only to a registered provider, after it confirms the exact amount.",
+  "Each bill can be paid only once.",
+  "Every transfer splits between the funder and the family in one transaction.",
+];
+
 export default function Home() {
   return (
     <>
@@ -83,6 +99,32 @@ export default function Home() {
             <ul className="divide-y divide-border border-b border-border [&>li]:py-3">
               <LatestReceipts />
             </ul>
+          </section>
+        </div>
+        <div className="mt-9 grid gap-8 lg:mt-24 lg:grid-cols-2 lg:gap-12">
+          <section aria-labelledby="why-each-side">
+            <h2 id="why-each-side" className="border-b-2 border-foreground pb-2 text-2xl font-semibold tracking-tight lg:text-[length:var(--text-section)]">Why each side uses Solstice</h2>
+            <ul className="divide-y divide-border border-b border-border">
+              {sides.map(({ who, why }) => (
+                <li key={who} className="py-3">
+                  <span className="font-semibold">{who}</span>
+                  <span className="block text-sm text-muted-foreground">{why}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section aria-labelledby="contract-vs-app">
+            <h2 id="contract-vs-app" className="border-b-2 border-foreground pb-2 text-2xl font-semibold tracking-tight lg:text-[length:var(--text-section)]">What the contract enforces, and what the app checks</h2>
+            <p className="pt-3 font-semibold">Enforced by the Stellar contract</p>
+            <ul className="list-disc space-y-1 py-2 pl-5 text-sm">
+              {enforced.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <p className="pt-2 font-semibold">Checked by the app, not the contract</p>
+            <p className="border-b border-border py-2 text-sm">
+              The funder&apos;s policy: which bills it pays, and the most it pays for each. Solstice records only what runs through it, so it can&apos;t stop a recruiter asking for cash elsewhere.
+            </p>
           </section>
         </div>
         <footer className="mt-10 border-t border-border py-4 text-sm text-muted-foreground lg:mt-36">

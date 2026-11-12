@@ -1,3 +1,5 @@
+> **Historical planning document (Nov 2026).** It describes earlier versions of the idea and uses the earlier name Laya. It is superseded by the root README.md and the live app. Some claims here, including legal ones, were not verified.
+
 # Laya v2: team task plan (Nov 5 to Nov 18)
 
 Nov 5, 2026 · @Abdullah Bakuvi

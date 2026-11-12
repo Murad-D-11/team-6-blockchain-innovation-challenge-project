@@ -1,3 +1,5 @@
+> **Historical planning document (Nov 2026).** It describes earlier versions of the idea and uses the earlier name Laya. It is superseded by the root README.md and the live app. Some claims here, including legal ones, were not verified.
+
 SUPERSEDED by docs/PLAN-v2.md (Laya v2). Kept for history. Do not build from this file.
 
 # Laya: Build Plan and Task Split

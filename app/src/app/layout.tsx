@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Solstice",
-  description: "See who covers each pre-departure bill and track provider payments and repayments.",
+  title: "Solstice: fair pre-departure financing on Stellar",
+  description: "Solstice pays a migrant worker's pre-departure bills straight to providers; she repays a capped share of each transfer home, on terms locked in a Stellar contract. Testnet demo.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
