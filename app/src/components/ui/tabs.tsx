@@ -1,41 +1,35 @@
 "use client";
 
-import * as React from "react";
+import type { ReactNode } from "react";
+import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { cn } from "@/lib/utils";
 
-/**
- * Minimal tabs (shadcn-style names). Controlled or uncontrolled:
- *   <Tabs defaultValue="requests"> <TabsList> <TabsTrigger value="requests">Requests</TabsTrigger> … </TabsList>
- *   <TabsContent value="requests">…</TabsContent> </Tabs>
- */
-const Ctx = React.createContext<{ value: string; setValue: (v: string) => void } | null>(null);
+type TabsProps = {
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  children: ReactNode;
+};
 
-export function Tabs({ defaultValue, value, onValueChange, className, children }: {
-  defaultValue?: string; value?: string; onValueChange?: (v: string) => void; className?: string; children: React.ReactNode;
-}) {
-  const [inner, setInner] = React.useState(defaultValue ?? "");
-  const current = value ?? inner;
-  const setValue = (v: string) => { if (value === undefined) setInner(v); onValueChange?.(v); };
-  return <Ctx.Provider value={{ value: current, setValue }}><div className={cn("space-y-3", className)}>{children}</div></Ctx.Provider>;
-}
-
-export function TabsList({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div role="tablist" className={cn("inline-flex rounded-lg bg-muted p-1", className)} {...p} />;
-}
-
-export function TabsTrigger({ value, className, children }: { value: string; className?: string; children: React.ReactNode }) {
-  const ctx = React.useContext(Ctx)!;
-  const active = ctx.value === value;
+export function Tabs({ className, onValueChange, ...props }: TabsProps) {
   return (
-    <button type="button" role="tab" aria-selected={active} onClick={() => ctx.setValue(value)}
-      className={cn("rounded-md px-3 py-1.5 text-sm font-medium transition-colors", active ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground", className)}>
-      {children}
-    </button>
+    <BaseTabs.Root
+      className={cn("space-y-4", className)}
+      onValueChange={(value) => { if (typeof value === "string") onValueChange?.(value); }}
+      {...props}
+    />
   );
 }
 
-export function TabsContent({ value, className, children }: { value: string; className?: string; children: React.ReactNode }) {
-  const ctx = React.useContext(Ctx)!;
-  if (ctx.value !== value) return null;
-  return <div role="tabpanel" className={className}>{children}</div>;
+export function TabsList({ className, ...props }: Omit<BaseTabs.List.Props, "className"> & { className?: string }) {
+  return <BaseTabs.List {...props} className={cn("inline-flex rounded-md border border-border bg-muted p-1", className)} />;
 }
+
+export function TabsTrigger({ className, ...props }: Omit<BaseTabs.Tab.Props, "className"> & { className?: string }) {
+  return (
+    <BaseTabs.Tab {...props} className={cn("min-h-9 rounded-sm px-4 text-sm font-semibold text-muted-foreground hover:text-foreground data-active:bg-card data-active:text-foreground", className)} />
+  );
+}
+
+export const TabsContent = BaseTabs.Panel;

@@ -7,7 +7,7 @@ import { errorText } from "@/components/errors";
 import { usePoll } from "@/components/hooks";
 import { PageShell } from "@/components/PageShell";
 import { RoleGuard } from "@/components/RoleGuard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLaya } from "@/lib/hooks/useLaya";
 import { useWallet } from "@/lib/hooks/useWallet";
 
@@ -51,9 +51,9 @@ function FamilyView() {
     <div className="space-y-4">
       {error && <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700" role="alert">{error}</p>}
 
-      <Card>
+      <Card className="bg-secondary">
         <CardHeader>
-          <CardDescription>Your balance</CardDescription>
+          <CardTitle>Wallet balance</CardTitle>
         </CardHeader>
         <CardContent>
           {balance === null ? <p className="text-sm text-muted-foreground">Loading…</p> : <AmountDisplay units={balance} size="lg" />}
@@ -63,7 +63,7 @@ function FamilyView() {
 
       <Card>
         <CardHeader>
-          <CardDescription>Total received from {WORKER} through Laya</CardDescription>
+          <CardTitle>Received from {WORKER}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           {received === null ? <p className="text-sm text-muted-foreground">Loading…</p> : <AmountDisplay units={received} size="lg" />}

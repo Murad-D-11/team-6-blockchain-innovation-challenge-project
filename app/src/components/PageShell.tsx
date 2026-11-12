@@ -15,37 +15,43 @@ const ROLE_LABEL: Record<string, string> = {
   worker: "Worker", family: "Family", funder: "Funder", creditor: "Provider", employer: "Employer", admin: "Admin", unknown: "Not a demo account",
 };
 
-/** Page frame: header with role, connected address and a Testnet badge. Mobile-first, max width ~ phone/tablet. */
-export function PageShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export function PageShell({ title, subtitle, children, wide = false, publicView = false }: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  wide?: boolean;
+  publicView?: boolean;
+}) {
   const laya = useLaya();
   const { address, role } = useWallet();
   const mounted = useMounted();
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="min-h-full bg-muted/40">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 py-3">
-          <Link href="/" className="text-lg font-bold tracking-tight">Laya</Link>
+    <div className="min-h-full">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:z-20 focus:bg-card focus:p-3">Skip to content</a>
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-8">
+          <Link href="/" translate="no" className="text-xl font-bold tracking-[-0.055em] hover:text-primary">Solstice</Link>
           <div className="flex items-center gap-2 text-xs">
-            <Badge className="border-amber-300 bg-amber-100 text-amber-900">Testnet{IS_MOCK ? " · mock" : ""}</Badge>
-            {mounted && address ? (
+            <Badge className="border-border bg-secondary text-foreground">{IS_MOCK ? "Mock demo" : "Stellar Testnet"}</Badge>
+            {!publicView && mounted && address ? (
               <span className="flex flex-col items-end leading-tight">
                 <span className="font-semibold">{ROLE_LABEL[role]}</span>
                 <span className="font-mono text-muted-foreground">{shortAddress(address)}</span>
               </span>
-            ) : mounted ? (
-              <Button size="sm" onClick={() => laya.connect().catch((e) => setError(errorText(e)))}>Connect</Button>
+            ) : !publicView && mounted ? (
+              <Button size="sm" onClick={() => laya.connect().catch((e) => setError(errorText(e)))}>Connect wallet</Button>
             ) : null}
           </div>
         </div>
-        {error && <p className="mx-auto max-w-2xl px-4 pb-2 text-xs text-red-700">{error}</p>}
+        {error && <p role="alert" className="mx-auto max-w-6xl px-4 pb-2 text-sm text-red-700 sm:px-8">{error}</p>}
       </header>
-      <main className="mx-auto max-w-2xl space-y-4 px-4 py-5">
-        <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
-        </div>
+      <main id="main-content" tabIndex={-1} className={`mx-auto space-y-6 px-4 pt-8 pb-12 sm:px-8 sm:pt-12 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
+        <header className="space-y-2 border-b border-border pb-5 sm:pb-7">
+          <h1 className="text-4xl leading-none font-semibold tracking-[-0.055em] sm:text-5xl">{title}</h1>
+          {subtitle && <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">{subtitle}</p>}
+        </header>
         {children}
       </main>
     </div>
