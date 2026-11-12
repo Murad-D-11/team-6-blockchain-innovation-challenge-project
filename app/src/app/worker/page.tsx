@@ -90,7 +90,7 @@ function Dashboard() {
           <CardHeader>
             <CardTitle>No paid bills yet</CardTitle>
             <CardDescription>
-              When a provider confirms a bill and the employer or a funder pays it, it shows up here.
+              When a provider confirms a bill and your employer or remittance partner (funder) pays it, it shows up here.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -164,7 +164,7 @@ function SendHome({ loans, onDone }: { loans: Loan[]; onDone: () => void }) {
         <CardTitle>Send money home</CardTitle>
         <CardDescription>
           {repaying
-            ? `One transaction: ${loan.shareBps / 100}% repays ${PEOPLE.funder.name}, the rest goes to ${FAMILY}.`
+            ? `One transaction: ${loan.shareBps / 100}% repays ${PEOPLE.funder.name}, your remittance partner (funder). The rest goes to ${FAMILY}.`
             : `Nothing is owed on this bill, so everything goes to ${FAMILY}.`}
         </CardDescription>
       </CardHeader>
@@ -281,6 +281,8 @@ function LoanCard({ loan, maxPause, onChanged }: { loan: Loan; maxPause: number;
 
         {loan.status === "Active" && <ShareControl key={loan.shareBps} loan={loan} onChanged={onChanged} />}
 
+        <LockedTerms loan={loan} />
+
         <Link href={`/proof/${loan.id}`} className="text-sm text-blue-600 underline">Public receipt</Link>
       </CardContent>
     </Card>
@@ -321,8 +323,9 @@ function ShareControl({ loan, onChanged }: { loan: Loan; onChanged: () => void }
 
 /**
  * Static comparison for the pitch (demo step 8). Illustrative numbers from PLAN-v2, no inputs, nothing stored.
- * Without Laya: 190 + 65 + 1,380 = 1,635 USDC borrowed at 54% a year → 1,635 × 0.54 / 12 ≈ 74 USDC interest a month.
- * With Laya: placement fee refused, medical exam paid by the employer, training 190 + 3% fee = 195.70 owed.
+ * Framing from "Laya: our final solution" (Nov 11). Without Laya: 190 + 65 = 255 USDC borrowed from a lender charging
+ * 100% a year → 255 × 1.00 / 12 ≈ 21 USDC interest a month. With Laya: exam paid by the employer (or the funder if the
+ * employer doesn't join), training 190 + 3% fee = 195.70 owed, no interest, paused when nothing is sent.
  */
 function WithoutWithLaya() {
   return (
@@ -332,22 +335,43 @@ function WithoutWithLaya() {
           <CardTitle>Without Laya vs with Laya</CardTitle>
           <span className="text-xs text-muted-foreground">illustrative</span>
         </div>
-        <CardDescription>Maria&apos;s three bills: training 190, medical exam 65, placement fee 1,380.</CardDescription>
+        <CardDescription>Maria&apos;s two bills before she leaves: training 190 and medical exam 65.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-900">
           <p className="font-semibold">Without Laya</p>
-          <p className="text-2xl font-bold tabular-nums">1,635 USDC</p>
-          <p>She borrows the whole amount, including the illegal placement fee.</p>
-          <p>At 54% a year, the interest alone is about <span className="font-semibold">74 USDC a month</span>, even in months she earns nothing.</p>
+          <p className="text-2xl font-bold tabular-nums">255 USDC</p>
+          <p>She borrows it all from a lender her recruiter points her to, at 100% a year or more.</p>
+          <p>The interest alone is about <span className="font-semibold">21 USDC a month</span>, even in months she earns nothing, and the debt grows.</p>
         </div>
         <div className="space-y-1 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
           <p className="font-semibold">With Laya</p>
           <p className="text-2xl font-bold tabular-nums">195.70 USDC</p>
-          <p>The placement fee is refused. The employer pays the medical exam.</p>
-          <p>She owes only the training plus a 3% fee, repaid from what she sends home, and <span className="font-semibold">paused when she sends nothing</span>.</p>
+          <p>Her employer pays the medical exam. Her remittance partner (funder) pays the training.</p>
+          <p>She owes only the training plus a one-time 3% fee. No interest, repaid from what she sends home, and <span className="font-semibold">paused when she sends nothing</span>.</p>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** The money terms the Stellar contract enforces for this loan (final-solution doc, Nov 11). Read-only. */
+function LockedTerms({ loan }: { loan: Loan }) {
+  return (
+    <div className="space-y-1.5 rounded-lg border border-border bg-muted/50 p-3 text-sm">
+      <p className="font-semibold">Locked terms</p>
+      <p className="text-xs text-muted-foreground">Set in a Stellar contract. Nobody can change these, not even the funder.</p>
+      <ul className="list-inside list-disc space-y-0.5">
+        <li>One-time fee: {loan.feeBps / 100}%, fixed when the bill was paid. No interest.</li>
+        <li>
+          Your share: {loan.shareBps / 100}% of each transfer.{" "}
+          {loan.shareBps >= MAX_SHARE_BPS
+            ? `That is the maximum, and it can never go below ${loan.minShareBps / 100}%.`
+            : `You can raise it up to 15%, never below ${loan.minShareBps / 100}%.`}
+        </li>
+        <li>The funder never gets more than you still owe.</li>
+        <li>Only you can send money. Nobody can pull money from your wallet.</li>
+      </ul>
+    </div>
   );
 }
