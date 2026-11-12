@@ -27,7 +27,7 @@ import { formatPhp, fromUnits, toUnits } from "@/lib/units";
 const MONTHS = 12; // v2: months no longer changes any amount; fixed and not shown
 
 const BILL_TYPES: { value: BillType; label: string }[] = [
-  { value: "training", label: "Hypothetical training bill" },
+  { value: "training", label: "Training" },
   { value: "medical_exam", label: "Medical exam" },
   { value: "placement_fee", label: "Philippine recruiter placement fee" },
   { value: "other", label: "Other" },

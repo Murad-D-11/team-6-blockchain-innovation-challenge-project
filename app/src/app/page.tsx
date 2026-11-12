@@ -15,7 +15,7 @@ const demoRoles = [
 ];
 
 const sampleBills = [
-  { name: "Hypothetical training bill", amount: "190 USDC", decision: "Eligible in this demo" },
+  { name: "Training", amount: "190 USDC", decision: "Eligible in this demo" },
   { name: "Medical exam", amount: "65 USDC", decision: "Employer can cover the full bill" },
   { name: "Philippine recruiter placement fee", amount: null, decision: "Outside the demo funding policy" },
 ];
