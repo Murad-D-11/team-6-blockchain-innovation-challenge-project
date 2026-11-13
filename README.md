@@ -20,8 +20,6 @@ admin: SAAPVQCREE2Q5ABXZCKPKQDTMN5BI4EWF6KK7EF45TNP2FGCJTAK6K7Q
 family: SD6BRSMAJFLHATJKB3FNLKOA3YUARHFSXFOZL62JUCQ437LMTVBZS452
 ```
 
-Public receipts need no wallet, for example https://team-6-blockchain-innovation-challe.vercel.app/proof/17
-
 ### Option 2: Run it locally
 
 1. Clone the repo, then install and start the app:
