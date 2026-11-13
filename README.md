@@ -1,3 +1,58 @@
+## Running the app
+
+Solstice runs on **Stellar Testnet only**, with test USDC and fictional accounts. The app decides your role (worker, provider, funder, employer, admin) by matching your wallet address to the demo accounts in `app/src/config/testnet.json`, so you act as a role by importing that role's demo account into Freighter.
+
+### Option 1: Use the hosted app (recommended)
+
+1. Install the [Freighter](https://www.freighter.app/) wallet extension and set its network to **Testnet**.
+2. Import the demo account for the role you want to act as, using the secret key we sent you. Name each account by its role.
+3. Open the live app: https://team-6-blockchain-innovation-challe.vercel.app
+4. Switch accounts in Freighter to change roles: worker on `/worker/request`, providers on `/creditor`, funder and employer on `/funder`, admin on `/admin`.
+
+Here are the keys:
+```
+worker: SC57CHYB5CYBQI5E7TH3APKJ5O76R3FA5ZWEO4DWGVIWFYLBSF46DMVX
+funder: SDFWCDGSLZTL7DD4SNVMYIKUO3VUUUAPEQMWFEKUNE7M7JCUW4RMNCG5
+creditor: SCMOL4N5J3D3BB7YJKLAAUJHFBTBMYXSGKFHWSBWPSVXTYZPQKY3DDNP
+clinic: SC3HPQ3ZWMM67LHEH5H2CM6QMR57TIKMDL2QITJLY6H3ORBHCXXP2K7F
+employer: SBK22DJJ65XWVLSCXICGNSN53Z2JFSGB3ISQODZIIN3TBVCNZ2DOO7RL
+admin: SAAPVQCREE2Q5ABXZCKPKQDTMN5BI4EWF6KK7EF45TNP2FGCJTAK6K7Q
+```
+
+Public receipts need no wallet, for example https://team-6-blockchain-innovation-challe.vercel.app/proof/17
+
+### Option 2: Run it locally
+
+1. Clone the repo, then install and start the app:
+
+   ```bash
+   cd app
+   npm install
+   npm run dev
+   ```
+
+   It runs at http://localhost:3000.
+2. By default the app uses a built-in mock, with no wallet or keys needed. Add `?role=worker` (or `funder`, `creditor`, `clinic`, `employer`, `admin`) to any URL to act as that role, and `?mockReset=1` to reset the mock.
+3. To use the real Testnet contract instead, create `app/.env.local` with this line, restart `npm run dev`, and use Freighter as in Option 1:
+
+   ```
+   NEXT_PUBLIC_USE_MOCK=false
+   ```
+
+4. Optional, for developers: `npm run smoke:real` runs the full flow on Testnet in code. It needs the demo accounts' secret keys in `app/.env.local`, using the variable names in `app/.env.example`. Never commit that file.
+
+```
+# Copy to .env.local (git-ignored) and fill in the values.
+# smoke.ts reads these; they are Stellar TESTNET keys for the demo accounts.
+LAYA_SECRET_WORKER=SC57CHYB5CYBQI5E7TH3APKJ5O76R3FA5ZWEO4DWGVIWFYLBSF46DMVX
+LAYA_SECRET_FUNDER=SDFWCDGSLZTL7DD4SNVMYIKUO3VUUUAPEQMWFEKUNE7M7JCUW4RMNCG5
+LAYA_SECRET_CREDITOR=SCMOL4N5J3D3BB7YJKLAAUJHFBTBMYXSGKFHWSBWPSVXTYZPQKY3DDNP
+LAYA_SECRET_CLINIC=SC3HPQ3ZWMM67LHEH5H2CM6QMR57TIKMDL2QITJLY6H3ORBHCXXP2K7F
+LAYA_SECRET_EMPLOYER=SBK22DJJ65XWVLSCXICGNSN53Z2JFSGB3ISQODZIIN3TBVCNZ2DOO7RL
+LAYA_SECRET_ADMIN=SAAPVQCREE2Q5ABXZCKPKQDTMN5BI4EWF6KK7EF45TNP2FGCJTAK6K7Q
+NEXT_PUBLIC_USE_MOCK=false
+```
+
 # Solstice
 
 Solstice pays a migrant domestic worker's pre-departure bills straight to the clinic and training centre, so she never needs a high-interest lender. A remittance partner funds the bills, and she repays a capped share of each transfer she sends home. The money rules are locked in a Soroban smart contract on Stellar.
