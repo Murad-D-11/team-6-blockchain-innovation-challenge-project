@@ -69,7 +69,7 @@
   --muted-foreground: var(--sol-muted);
   --accent: var(--sol-paper-3);
   --accent-foreground: var(--sol-ink);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: var(--sol-error);
   --border: var(--sol-rule);
   --input: var(--sol-muted);
   --ring: var(--sol-focus);
@@ -224,5 +224,228 @@
   }
   .invoice-item[open] .invoice-marker {
     transform: rotate(225deg);
+  }
+}
+
+/* Home page (DESIGN DIRECTION v2, palette v6): a remittance slip on a navy field, set like a ledger.
+ * The palette itself lives in tokens.css (--sol-navy, --sol-sheet, --sol-signal, --sol-brick, ...). These are the home-only aliases and shapes.
+ * Type: Hanken Grotesk 700 with tight tracking for headlines, the mono face for every big number. */
+.home {
+  --field: var(--sol-navy);
+  --field-ink: var(--sol-sheet);
+  --field-muted: var(--sol-sheet);
+  --signal: var(--sol-signal);
+  --signal-hover: var(--sol-signal-hover);
+  --slip: var(--sol-sheet);
+  --slip-ink: var(--sol-ink);
+  --slip-muted: var(--sol-muted);
+  --slip-rule: #C9D2E6;
+  --shadow-ink: var(--sol-blue);
+  background: var(--background);
+  color: var(--foreground);
+}
+.home ::selection {
+  background: var(--sol-signal);
+  color: var(--sol-ink);
+}
+/* Navy block: flat colour, no pattern. The hero dust canvas (DustField) is the only texture. Borders on it are pale blue. */
+.home .field {
+  --ring: var(--sol-sheet);
+  --border: var(--sol-blue-pale);
+  background-color: var(--field);
+  color: var(--field-ink);
+}
+.home .field-muted {
+  color: var(--field-muted);
+}
+/* Thin double rule: two ink hairlines with near-white between, the divider between blocks and at the hero edge. */
+.home .rule-double {
+  height: 8px;
+  background: var(--sol-sheet);
+  border-block: 2px solid var(--sol-ink);
+}
+.home .display {
+  font-family: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.home .num {
+  font-family: var(--font-outlier);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+.home .home-title {
+  font-size: clamp(2.25rem, 1.2rem + 2.6vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.home .home-h2 {
+  font-size: var(--text-xl);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+@media (min-width: 1024px) {
+  .home .home-h2 {
+    font-size: var(--text-2xl);
+  }
+}
+.home .signal-button {
+  background: var(--signal);
+  color: var(--sol-ink);
+  font-weight: 600;
+}
+.home .signal-button:hover {
+  background: var(--signal-hover);
+}
+
+/* The slip: near-white paper object with a hard shadow. The stub is torn off below it. */
+.home .slip {
+  position: relative;
+  background: var(--slip);
+  color: var(--slip-ink);
+  box-shadow: 6px 6px 0 var(--shadow-ink);
+}
+@media (min-width: 640px) {
+  .home .slip {
+    box-shadow: 10px 10px 0 var(--shadow-ink);
+  }
+}
+.home .slip-rule {
+  border-color: var(--slip-rule);
+}
+.home .slip-muted {
+  color: var(--slip-muted);
+}
+/* Perforation where the stub is torn off the bills slip: dashed line on the slip's bottom edge, with punched notches. */
+.home .perf-join {
+  border-bottom: 2px dashed var(--slip-rule);
+}
+.home .perf-join::before,
+.home .perf-join::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--field);
+}
+.home .perf-join::before {
+  left: -10px;
+}
+.home .perf-join::after {
+  right: -10px;
+}
+/* Torn paper stub: jagged top edge via clip-path, hard shadow via drop-shadow on the wrapper (clip-path would cut a box-shadow). */
+.home .stub-wrap {
+  filter: drop-shadow(6px 6px 0 var(--shadow-ink));
+}
+@media (min-width: 640px) {
+  .home .stub-wrap {
+    filter: drop-shadow(10px 10px 0 var(--shadow-ink));
+  }
+}
+.home .stub {
+  background: var(--slip);
+  color: var(--slip-ink);
+  clip-path: polygon(0 9px, 2.5% 0, 5% 9px, 7.5% 0, 10% 9px, 12.5% 0, 15% 9px, 17.5% 0, 20% 9px, 22.5% 0, 25% 9px, 27.5% 0, 30% 9px, 32.5% 0, 35% 9px, 37.5% 0, 40% 9px, 42.5% 0, 45% 9px, 47.5% 0, 50% 9px, 52.5% 0, 55% 9px, 57.5% 0, 60% 9px, 62.5% 0, 65% 9px, 67.5% 0, 70% 9px, 72.5% 0, 75% 9px, 77.5% 0, 80% 9px, 82.5% 0, 85% 9px, 87.5% 0, 90% 9px, 92.5% 0, 95% 9px, 97.5% 0, 100% 9px, 100% 100%, 0 100%);
+}
+
+/* Rubber-stamp marks: static, double-ruled, always with a text label. Navy = fine, brick red = refused or app-only. */
+.home .stamp {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border: 4px double currentColor;
+  font-family: var(--font-outlier);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(-3deg);
+}
+.home .stamp-olive {
+  color: var(--sol-navy);
+}
+.home .stamp-clay {
+  color: var(--sol-brick);
+}
+.home .stamp-ink {
+  color: var(--sol-navy);
+  font-size: 0.75rem;
+}
+/* "Optional" tag on the employer column: dashed, no rotation. */
+.home .tag-optional {
+  display: inline-block;
+  padding: 0.0625rem 0.5rem;
+  border: 1px dashed currentColor;
+  font-family: var(--font-outlier);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+/* The biggest type on the page: the 400.00 that splits. Tan with very dark text. */
+.home .slip-total {
+  font-size: clamp(3.5rem, 1.75rem + 5vw, 5.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+  background: var(--sol-signal);
+  color: var(--sol-ink);
+  padding: 0.05em 0.15em;
+}
+.home .figure {
+  font-family: var(--font-outlier);
+  font-variant-numeric: tabular-nums;
+}
+
+.home .home-footer {
+  background: var(--sol-footer);
+  color: var(--sol-sheet);
+}
+.home .ticket {
+  position: relative;
+  background: var(--slip);
+  color: var(--slip-ink);
+  border: 1px solid var(--slip-rule);
+}
+.home .ticket:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.home .perf-ticket {
+  position: relative;
+  border-top: 2px dashed var(--slip-rule);
+}
+.home .perf-ticket::before,
+.home .perf-ticket::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--notch, var(--background));
+}
+.home .perf-ticket::before {
+  left: -9px;
+}
+.home .perf-ticket::after {
+  right: -9px;
+}
+/* Dashed trail joining the five step tickets in order (desktop only). */
+@media (min-width: 1024px) {
+  .home .trail-row > li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    width: 24px;
+    border-top: 2px dashed var(--sol-ink);
   }
 }

@@ -6,14 +6,19 @@
   --text-section: clamp(2rem, 2.5vw + 1rem, 3.5rem); --text-title: clamp(1.25rem, 0.75vw + 0.875rem, 1.625rem); --text-lead: clamp(1.125rem, 0.35vw + 1rem, 1.375rem);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
-  --sol-error: oklch(52% 0.19 27); --sol-success: oklch(50% 0.12 150);
+  --sol-error: #B4381C; --sol-success: #0B1B3A;
   --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
-  --sol-paper: oklch(84% 0.012 245); --sol-paper-2: oklch(81% 0.012 245); --sol-paper-3: oklch(77% 0.012 245);
-  --sol-ink: oklch(16% 0.020 245); --sol-ink-2: oklch(24% 0.018 245); --sol-muted: oklch(38% 0.016 245);
-  --sol-rule: oklch(73% 0.013 240); --sol-rule-2: oklch(32% 0.018 240);
-  --sol-accent: oklch(45% 0.180 350); --sol-accent-2: oklch(37% 0.160 350); --sol-accent-ink: oklch(97% 0.006 245); --sol-focus: oklch(46% 0.190 350);
-  --sol-sheet: oklch(93.5% 0.008 245);
+  --sol-paper: #F4F6FB; --sol-paper-2: #E8ECF6; --sol-paper-3: #DCE3F2;
+  --sol-ink: #0A1226; --sol-ink-2: #121C38; --sol-muted: #2B3654;
+  --sol-rule: #C9D2E6; --sol-rule-2: #8793B0;
+  --sol-accent: #1B3A78; --sol-accent-2: #0B1B3A; --sol-accent-ink: #FFFFFF; --sol-focus: #1B3A78;
+  --sol-sheet: #FFFFFF;
+  /* Palette v6 (Nov 12): navy fields, secondary blue for secondary blocks and shadows, pale blue for fills and borders on dark,
+     cool near-white paper, pure white sheets, near-black blue ink. Yellow (signal) only for the main button, the 400.00 highlight
+     and the hero dust. One brick red for refusals and app-only checks. */
+  --sol-navy: #0B1B3A; --sol-blue: #1B3A78; --sol-blue-pale: #9DB7FF;
+  --sol-signal: #FFD42A; --sol-signal-hover: #F2C200; --sol-brick: #B4381C; --sol-footer: #0B1B3A;
   --font-display: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-newsreader), ui-serif, Georgia, serif;
   --font-outlier: var(--font-geist-mono), ui-monospace, monospace;
